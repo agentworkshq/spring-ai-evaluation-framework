@@ -11,7 +11,12 @@ public enum ErrorMessages {
     EVAL_E008(422, "Invalid dataset field in %s: %s"),
     EVAL_E009(500, "Dataset could not be read: %s"),
     EVAL_E010(400, "Invalid argument: %s"),
-    EVAL_E011(400, "Invalid configuration: %s");
+    EVAL_E011(400, "Invalid configuration: %s"),
+    EVAL_E012(400, "Invalid run input: %s"),
+    EVAL_E013(400, "Too many cases for this run: %d selected (limit %d)"),
+    EVAL_E014(400, "No cases selected for this run from dataset: %s"),
+    EVAL_E015(400, "Duplicate metric names: %s"),
+    EVAL_E016(500, "Evaluation run was cancelled");
 
     private final int status;
     private final String message;

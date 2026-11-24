@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 class EvalDatasetTest {
 
     private static EvalCase base() {
-        return new EvalCase("a", "q", "ans", List.of("s1", "s2"), false, List.of("t1", "t2"), Map.of("k", "v"));
+        return new EvalCase("a", "q", "ans", List.of("s1", "s2"), false, List.of("t1", "t2"), Map.of("k", "v"), null, null);
     }
 
     private static EvalDataset dataset(EvalCase... cases) {
@@ -22,7 +22,7 @@ class EvalDatasetTest {
 
     @Test
     void goldenFingerprintForMinimalDataset() {
-        EvalDataset minimal = new EvalDataset("g", List.of(new EvalCase("a", "q", null, null, false, null, null)));
+        EvalDataset minimal = new EvalDataset("g", List.of(new EvalCase("a", "q", null, null, false, null, null, null, null)));
 
         assertThat(minimal.fingerprint()).isEqualTo("e9210c00e5df2eb4aeb8d3e4fef5ed0a530c921bb3039441b32eca1ca1b83627");
     }
@@ -38,7 +38,7 @@ class EvalDatasetTest {
     @Test
     void sortsCasesByIdAndCopiesInput() {
         List<EvalCase> input = new ArrayList<>(List.of(
-                new EvalCase("b", "q", null, null, false, null, null), new EvalCase("a", "q", null, null, false, null, null)));
+                new EvalCase("b", "q", null, null, false, null, null, null, null), new EvalCase("a", "q", null, null, false, null, null, null, null)));
 
         EvalDataset d = new EvalDataset("d", input);
         input.clear();
@@ -49,8 +49,8 @@ class EvalDatasetTest {
 
     @Test
     void fingerprintIsStableAndIgnoresInputOrder() {
-        EvalCase a = new EvalCase("a", "qa", null, null, false, List.of("y", "x"), Map.of("k2", "2", "k1", "1"));
-        EvalCase b = new EvalCase("b", "qb", null, null, false, null, null);
+        EvalCase a = new EvalCase("a", "qa", null, null, false, List.of("y", "x"), Map.of("k2", "2", "k1", "1"), null, null);
+        EvalCase b = new EvalCase("b", "qb", null, null, false, null, null, null, null);
 
         String first = new EvalDataset("d", List.of(a, b)).fingerprint();
 
@@ -66,44 +66,44 @@ class EvalDatasetTest {
 
     @Test
     void fingerprintChangesWhenIdChanges() {
-        assertChanges(c -> new EvalCase("z", c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(), c.attributes()));
+        assertChanges(c -> new EvalCase("z", c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(), c.attributes(), null, null));
     }
 
     @Test
     void fingerprintChangesWhenQuestionChanges() {
-        assertChanges(c -> new EvalCase(c.id(), "other", c.expectedAnswer(), c.expectedSources(), false, c.tags(), c.attributes()));
+        assertChanges(c -> new EvalCase(c.id(), "other", c.expectedAnswer(), c.expectedSources(), false, c.tags(), c.attributes(), null, null));
     }
 
     @Test
     void fingerprintChangesWhenExpectedAnswerChanges() {
-        assertChanges(c -> new EvalCase(c.id(), c.question(), "other", c.expectedSources(), false, c.tags(), c.attributes()));
-        assertChanges(c -> new EvalCase(c.id(), c.question(), null, c.expectedSources(), false, c.tags(), c.attributes()));
-        assertChanges(c -> new EvalCase(c.id(), c.question(), "", c.expectedSources(), false, c.tags(), c.attributes()));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), "other", c.expectedSources(), false, c.tags(), c.attributes(), null, null));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), null, c.expectedSources(), false, c.tags(), c.attributes(), null, null));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), "", c.expectedSources(), false, c.tags(), c.attributes(), null, null));
     }
 
     @Test
     void fingerprintChangesWhenSourcesChange() {
-        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), List.of("s1"), false, c.tags(), c.attributes()));
-        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), List.of("s2", "s1"), false, c.tags(), c.attributes()));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), List.of("s1"), false, c.tags(), c.attributes(), null, null));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), List.of("s2", "s1"), false, c.tags(), c.attributes(), null, null));
     }
 
     @Test
     void fingerprintChangesWhenExpectNoAnswerChanges() {
-        EvalCase a = new EvalCase("a", "q", null, null, false, null, null);
-        EvalCase b = new EvalCase("a", "q", null, null, true, null, null);
+        EvalCase a = new EvalCase("a", "q", null, null, false, null, null, null, null);
+        EvalCase b = new EvalCase("a", "q", null, null, true, null, null, null, null);
 
         assertThat(dataset(a).fingerprint()).isNotEqualTo(dataset(b).fingerprint());
     }
 
     @Test
     void fingerprintChangesWhenTagsChange() {
-        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, List.of("t1"), c.attributes()));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, List.of("t1"), c.attributes(), null, null));
     }
 
     @Test
     void fingerprintChangesWhenAttributesChange() {
-        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(), Map.of("k", "w")));
-        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(), Map.of("j", "v")));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(), Map.of("k", "w"), null, null));
+        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(), Map.of("j", "v"), null, null));
     }
 
     @Test
@@ -143,11 +143,11 @@ class EvalDatasetTest {
 
     @Test
     void fieldBoundariesCannotBeConfused() {
-        EvalCase one = new EvalCase("a", "bc", "d", null, false, null, null);
-        EvalCase two = new EvalCase("a", "b", "cd", null, false, null, null);
-        EvalCase tagsOne = new EvalCase("a", "q", null, List.of("ab", "c"), false, null, null);
-        EvalCase tagsTwo = new EvalCase("a", "q", null, List.of("a", "bc"), false, null, null);
-        EvalCase tagsThree = new EvalCase("a", "q", null, List.of("abc"), false, null, null);
+        EvalCase one = new EvalCase("a", "bc", "d", null, false, null, null, null, null);
+        EvalCase two = new EvalCase("a", "b", "cd", null, false, null, null, null, null);
+        EvalCase tagsOne = new EvalCase("a", "q", null, List.of("ab", "c"), false, null, null, null, null);
+        EvalCase tagsTwo = new EvalCase("a", "q", null, List.of("a", "bc"), false, null, null, null, null);
+        EvalCase tagsThree = new EvalCase("a", "q", null, List.of("abc"), false, null, null, null, null);
 
         assertThat(dataset(one).fingerprint()).isNotEqualTo(dataset(two).fingerprint());
         assertThat(dataset(tagsOne).fingerprint()).isNotEqualTo(dataset(tagsTwo).fingerprint());

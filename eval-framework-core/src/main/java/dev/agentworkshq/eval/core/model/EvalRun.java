@@ -32,17 +32,19 @@ public record EvalRun(
             throw Checks.bad("fields 'startedAt' and 'finishedAt' must be set and finishedAt must not be before startedAt");
         }
         config = Checks.sortedMap(config, "config", Integer.MAX_VALUE);
-        for (String key : config.keySet()) {
-            if (looksLikeSecret(key)) {
-                throw new ValidationException(ErrorMessages.EVAL_E011,
-                        "config key '" + key.replaceAll("\\p{Cntrl}", "?") + "' looks like a credential and is not allowed");
-            }
-        }
+        config.keySet().forEach(EvalRun::requireSafeConfigKey);
         caseResults = Checks.list(caseResults, "caseResults", Integer.MAX_VALUE);
         if (new HashSet<>(caseResults.stream().map(CaseResult::caseId).toList()).size() != caseResults.size()) {
             throw Checks.bad("field 'caseResults' has a duplicate case id");
         }
         caseResults = caseResults.stream().sorted(Comparator.comparing(CaseResult::caseId)).toList();
+    }
+
+    public static void requireSafeConfigKey(String key) {
+        if (looksLikeSecret(key)) {
+            throw new ValidationException(ErrorMessages.EVAL_E011,
+                    "config key '" + key.replaceAll("\\p{Cntrl}", "?") + "' looks like a credential and is not allowed");
+        }
     }
 
     private static boolean looksLikeSecret(String key) {

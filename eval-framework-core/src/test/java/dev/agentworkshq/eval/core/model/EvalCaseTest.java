@@ -21,7 +21,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 class EvalCaseTest {
 
     private static EvalCase simple() {
-        return new EvalCase("a", "q", null, null, false, null, null);
+        return new EvalCase("a", "q", null, null, false, null, null, null, null);
     }
 
     @ParameterizedTest
@@ -46,7 +46,7 @@ class EvalCaseTest {
 
     @Test
     void validCaseKeepsAllFields() {
-        EvalCase c = new EvalCase("id-1", "Question?", "Answer", List.of("a.pdf"), false, List.of("t"), Map.of("k", "v"));
+        EvalCase c = new EvalCase("id-1", "Question?", "Answer", List.of("a.pdf"), false, List.of("t"), Map.of("k", "v"), null, null);
 
         assertThat(c.id()).isEqualTo("id-1");
         assertThat(c.question()).isEqualTo("Question?");
@@ -58,50 +58,50 @@ class EvalCaseTest {
 
     @Test
     void rejectsInvalidId() {
-        assertThatThrownBy(() -> new EvalCase("bad id", "q", null, null, false, null, null))
+        assertThatThrownBy(() -> new EvalCase("bad id", "q", null, null, false, null, null, null, null))
                 .isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> new EvalCase(null, "q", null, null, false, null, null))
+        assertThatThrownBy(() -> new EvalCase(null, "q", null, null, false, null, null, null, null))
                 .isInstanceOf(ValidationException.class);
     }
 
     @Test
     void rejectsBadQuestion() {
-        assertThatThrownBy(() -> new EvalCase("a", " ", null, null, false, null, null)).isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> new EvalCase("a", null, null, null, false, null, null)).isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> new EvalCase("a", "q".repeat(4001), null, null, false, null, null))
+        assertThatThrownBy(() -> new EvalCase("a", " ", null, null, false, null, null, null, null)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> new EvalCase("a", null, null, null, false, null, null, null, null)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> new EvalCase("a", "q".repeat(4001), null, null, false, null, null, null, null))
                 .isInstanceOf(ValidationException.class);
-        assertThat(new EvalCase("a", "q".repeat(4000), null, null, false, null, null).question()).hasSize(4000);
+        assertThat(new EvalCase("a", "q".repeat(4000), null, null, false, null, null, null, null).question()).hasSize(4000);
     }
 
     @Test
     void rejectsLongExpectedAnswer() {
-        assertThatThrownBy(() -> new EvalCase("a", "q", "x".repeat(8001), null, false, null, null))
+        assertThatThrownBy(() -> new EvalCase("a", "q", "x".repeat(8001), null, false, null, null, null, null))
                 .isInstanceOf(ValidationException.class);
-        assertThat(new EvalCase("a", "q", "x".repeat(8000), null, false, null, null)).isNotNull();
+        assertThat(new EvalCase("a", "q", "x".repeat(8000), null, false, null, null, null, null)).isNotNull();
     }
 
     @Test
     void rejectsBadSources() {
         List<String> blank = new ArrayList<>(List.of("a"));
         blank.add(" ");
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, blank, false, null, null)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, blank, false, null, null, null, null)).isInstanceOf(ValidationException.class);
         List<String> withNull = new ArrayList<>();
         withNull.add(null);
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, withNull, false, null, null)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, withNull, false, null, null, null, null)).isInstanceOf(ValidationException.class);
         List<String> many = IntStream.range(0, 51).mapToObj(i -> "s" + i).toList();
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, many, false, null, null)).isInstanceOf(ValidationException.class);
-        assertThat(new EvalCase("a", "q", null, many.subList(0, 50), false, null, null).expectedSources()).hasSize(50);
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, many, false, null, null, null, null)).isInstanceOf(ValidationException.class);
+        assertThat(new EvalCase("a", "q", null, many.subList(0, 50), false, null, null, null, null).expectedSources()).hasSize(50);
     }
 
     @Test
     void rejectsBadTags() {
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, List.of("t", "t"), null))
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, List.of("t", "t"), null, null, null))
                 .isInstanceOf(ValidationException.class);
         List<String> many = IntStream.range(0, 21).mapToObj(i -> "t" + i).toList();
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, many, null)).isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, List.of("x".repeat(51)), null))
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, many, null, null, null)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, List.of("x".repeat(51)), null, null, null))
                 .isInstanceOf(ValidationException.class);
-        assertThat(new EvalCase("a", "q", null, null, false, List.of("x".repeat(50)), null).tags()).hasSize(1);
+        assertThat(new EvalCase("a", "q", null, null, false, List.of("x".repeat(50)), null, null, null).tags()).hasSize(1);
     }
 
     @Test
@@ -111,7 +111,7 @@ class EvalCaseTest {
         unsorted.put("m", "2");
         unsorted.put("a", "3");
 
-        EvalCase c = new EvalCase("a", "q", null, null, false, List.of("c", "a", "b"), unsorted);
+        EvalCase c = new EvalCase("a", "q", null, null, false, List.of("c", "a", "b"), unsorted, null, null);
 
         assertThat(c.tags()).containsExactly("a", "b", "c");
         assertThat(c.attributes().keySet()).containsExactly("a", "m", "z");
@@ -121,19 +121,19 @@ class EvalCaseTest {
     void rejectsTooManyAttributes() {
         Map<String, String> many = new HashMap<>();
         IntStream.range(0, 21).forEach(i -> many.put("k" + i, "v"));
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, null, many)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, null, many, null, null)).isInstanceOf(ValidationException.class);
         Map<String, String> nullValue = new HashMap<>();
         nullValue.put("k", null);
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, null, nullValue))
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, false, null, nullValue, null, null))
                 .isInstanceOf(ValidationException.class);
     }
 
     @Test
     void rejectsNoAnswerWithAnswerOrSources() {
-        assertThatThrownBy(() -> new EvalCase("a", "q", "x", null, true, null, null)).isInstanceOf(ValidationException.class);
-        assertThatThrownBy(() -> new EvalCase("a", "q", null, List.of("s"), true, null, null))
+        assertThatThrownBy(() -> new EvalCase("a", "q", "x", null, true, null, null, null, null)).isInstanceOf(ValidationException.class);
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, List.of("s"), true, null, null, null, null))
                 .isInstanceOf(ValidationException.class);
-        assertThat(new EvalCase("a", "q", null, null, true, null, null).expectNoAnswer()).isTrue();
+        assertThat(new EvalCase("a", "q", null, null, true, null, null, null, null).expectNoAnswer()).isTrue();
     }
 
     @Test
@@ -142,7 +142,7 @@ class EvalCaseTest {
         List<String> tags = new ArrayList<>(List.of("t"));
         Map<String, String> attributes = new HashMap<>(Map.of("k", "v"));
 
-        EvalCase c = new EvalCase("a", "q", null, sources, false, tags, attributes);
+        EvalCase c = new EvalCase("a", "q", null, sources, false, tags, attributes, null, null);
         sources.add("other");
         tags.add("other");
         attributes.put("other", "x");
@@ -218,7 +218,7 @@ class EvalCaseTest {
     void invalidIdIsNotEchoedInMessages() {
         String bad = "SECRET ID/with space";
 
-        assertThatThrownBy(() -> new EvalCase(bad, "q", null, null, false, null, null))
+        assertThatThrownBy(() -> new EvalCase(bad, "q", null, null, false, null, null, null, null))
                 .hasMessageNotContaining("SECRET");
 
         DatasetLoader loader = new DatasetLoader(Path.of("."), DatasetLimits.defaults());

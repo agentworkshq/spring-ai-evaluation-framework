@@ -13,7 +13,7 @@ final class MetricFixtures {
     }
 
     static EvalCase withSources(String... sources) {
-        return new EvalCase("c", "question", null, List.of(sources), false, null, null);
+        return new EvalCase("c", "question", null, List.of(sources), false, null, null, null, null);
     }
 
     static EvalCase withPhrases(List<String> mustContain, List<String> mustNotContain) {
@@ -21,7 +21,7 @@ final class MetricFixtures {
     }
 
     static EvalCase noAnswerCase() {
-        return new EvalCase("c", "question", null, null, true, null, null);
+        return new EvalCase("c", "question", null, null, true, null, null, null, null);
     }
 
     static RetrievedChunk chunk(String source) {

@@ -39,17 +39,6 @@ public record EvalCase(
         }
     }
 
-    public EvalCase(
-            String id,
-            String question,
-            String expectedAnswer,
-            List<String> expectedSources,
-            boolean expectNoAnswer,
-            List<String> tags,
-            Map<String, String> attributes) {
-        this(id, question, expectedAnswer, expectedSources, expectNoAnswer, tags, attributes, null, null);
-    }
-
     private static List<String> phrases(List<String> values, String field) {
         List<String> list = Checks.list(values, field, 20);
         if (list.stream().anyMatch(String::isBlank)) {

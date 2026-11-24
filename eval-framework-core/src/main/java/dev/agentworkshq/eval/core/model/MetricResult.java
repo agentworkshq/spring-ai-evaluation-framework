@@ -16,9 +16,7 @@ public record MetricResult(String metricName, MetricStatus status, Double score,
         if (!scored && score != null) {
             throw Checks.bad("field 'score' must be null for an error or skipped result");
         }
-        if (reason != null && reason.length() > MAX_REASON) {
-            reason = reason.substring(0, MAX_REASON - 3) + "...";
-        }
+        reason = Text.truncate(reason, MAX_REASON);
     }
 
     public static MetricResult passed(String metricName, double score, String reason) {

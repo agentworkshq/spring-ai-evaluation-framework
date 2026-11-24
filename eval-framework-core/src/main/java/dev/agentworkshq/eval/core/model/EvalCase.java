@@ -11,7 +11,9 @@ public record EvalCase(
         List<String> expectedSources,
         boolean expectNoAnswer,
         List<String> tags,
-        Map<String, String> attributes) {
+        Map<String, String> attributes,
+        List<String> mustContain,
+        List<String> mustNotContain) {
 
     public EvalCase {
         NameRules.require(id, "id");
@@ -30,8 +32,35 @@ public record EvalCase(
         }
         tags = List.copyOf(tags.stream().sorted().toList());
         attributes = Checks.sortedMap(attributes, "attributes", 20);
-        if (expectNoAnswer && (expectedAnswer != null || !expectedSources.isEmpty())) {
-            throw Checks.bad("field 'expectNoAnswer' cannot be combined with expectedAnswer or expectedSources");
+        mustContain = phrases(mustContain, "mustContain");
+        mustNotContain = phrases(mustNotContain, "mustNotContain");
+        if (expectNoAnswer && (expectedAnswer != null || !expectedSources.isEmpty() || !mustContain.isEmpty())) {
+            throw Checks.bad("field 'expectNoAnswer' cannot be combined with expectedAnswer, expectedSources or mustContain");
         }
+    }
+
+    public EvalCase(
+            String id,
+            String question,
+            String expectedAnswer,
+            List<String> expectedSources,
+            boolean expectNoAnswer,
+            List<String> tags,
+            Map<String, String> attributes) {
+        this(id, question, expectedAnswer, expectedSources, expectNoAnswer, tags, attributes, null, null);
+    }
+
+    private static List<String> phrases(List<String> values, String field) {
+        List<String> list = Checks.list(values, field, 20);
+        if (list.stream().anyMatch(String::isBlank)) {
+            throw Checks.bad("field '" + field + "' must not contain blank entries");
+        }
+        if (list.stream().anyMatch(p -> p.length() > 500)) {
+            throw Checks.bad("field '" + field + "' has an entry longer than 500 characters");
+        }
+        if (new HashSet<>(list).size() != list.size()) {
+            throw Checks.bad("field '" + field + "' must not contain duplicates");
+        }
+        return List.copyOf(list.stream().sorted().toList());
     }
 }

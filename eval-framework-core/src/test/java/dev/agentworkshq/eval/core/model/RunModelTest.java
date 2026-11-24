@@ -171,11 +171,18 @@ class RunModelTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"apiKey", "API_KEY", "client-secret", "Token", "db.PASSWORD", "AUTHORIZATION", "monkey"})
+    @ValueSource(strings = {"api-key", "apiKey", "APIKey", "API_KEY", "apikey", "client-secret", "Token", "db_password",
+        "x.AUTHORIZATION", "passwd", "myCredentials", "credential", "bearer-value"})
     void evalRunRejectsSecretLikeKeysWithoutEchoingValue(String key) {
         assertThatThrownBy(() -> run(Map.of(key, "VALUE-MUST-NOT-LEAK"), List.of()))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining(key)
                 .hasMessageNotContaining("VALUE-MUST-NOT-LEAK");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"max-tokens", "monkey", "keyspace", "top-k", "model", "temperature", "maxTokens", "tokenizer"})
+    void evalRunAllowsOrdinaryKeys(String key) {
+        assertThat(run(Map.of(key, "v"), List.of()).config()).containsKey(key);
     }
 }

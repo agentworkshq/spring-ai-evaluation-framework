@@ -164,6 +164,56 @@ class EvalCaseTest {
         assertThat(c.attributes()).isEmpty();
     }
 
+    private static EvalCase withPhrases(List<String> mustContain, List<String> mustNotContain) {
+        return new EvalCase("a", "q", null, null, false, null, null, mustContain, mustNotContain);
+    }
+
+    @Test
+    void phraseListsAreStoredSortedAndCopied() {
+        List<String> must = new ArrayList<>(List.of("b", "a"));
+
+        EvalCase c = withPhrases(must, List.of("z", "y"));
+        must.clear();
+
+        assertThat(c.mustContain()).containsExactly("a", "b");
+        assertThat(c.mustNotContain()).containsExactly("y", "z");
+        assertThatThrownBy(() -> c.mustContain().add("x")).isInstanceOf(UnsupportedOperationException.class);
+        assertThat(simple().mustContain()).isEmpty();
+        assertThat(simple().mustNotContain()).isEmpty();
+    }
+
+    @Test
+    void phraseListsEnforceTheirRules() {
+        List<String> many = IntStream.range(0, 21).mapToObj(i -> "p" + i).toList();
+        for (int field = 0; field < 2; field++) {
+            boolean first = field == 0;
+            java.util.function.Function<List<String>, EvalCase> make = l -> first ? withPhrases(l, null) : withPhrases(null, l);
+            assertThatThrownBy(() -> make.apply(List.of(" "))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> make.apply(List.of("p", "p"))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> make.apply(List.of("x".repeat(501)))).isInstanceOf(ValidationException.class);
+            assertThatThrownBy(() -> make.apply(many)).isInstanceOf(ValidationException.class);
+            assertThat(make.apply(List.of("x".repeat(500)))).isNotNull();
+            assertThat(make.apply(many.subList(0, 20))).isNotNull();
+        }
+    }
+
+    @Test
+    void noAnswerConflictsWithMustContainButNotMustNotContain() {
+        assertThatThrownBy(() -> new EvalCase("a", "q", null, null, true, null, null, List.of("x"), null))
+                .isInstanceOf(ValidationException.class);
+        assertThat(new EvalCase("a", "q", null, null, true, null, null, null, List.of("x")).expectNoAnswer()).isTrue();
+    }
+
+    @Test
+    void contradictoryOrInvalidCaseNeverEchoesItsText() {
+        assertThatThrownBy(() -> new EvalCase("a", "SECRET-QUESTION", "SECRET-ANSWER", null, true, null, null,
+                List.of("SECRET-PHRASE"), List.of(" ")))
+                .hasMessageNotContaining("SECRET");
+        assertThatThrownBy(() -> new EvalCase("a", "SECRET-QUESTION", null, null, false, null, null,
+                List.of("SECRET-PHRASE", "SECRET-PHRASE"), null))
+                .hasMessageNotContaining("SECRET");
+    }
+
     @Test
     void invalidIdIsNotEchoedInMessages() {
         String bad = "SECRET ID/with space";

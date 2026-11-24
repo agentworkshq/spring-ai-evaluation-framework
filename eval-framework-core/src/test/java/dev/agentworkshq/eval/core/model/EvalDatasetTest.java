@@ -24,7 +24,7 @@ class EvalDatasetTest {
     void goldenFingerprintForMinimalDataset() {
         EvalDataset minimal = new EvalDataset("g", List.of(new EvalCase("a", "q", null, null, false, null, null)));
 
-        assertThat(minimal.fingerprint()).isEqualTo("9e957bd622736d7917110ad4904973ec2127711fcf77c4fc123a4ffff984c1eb");
+        assertThat(minimal.fingerprint()).isEqualTo("e9210c00e5df2eb4aeb8d3e4fef5ed0a530c921bb3039441b32eca1ca1b83627");
     }
 
     @Test
@@ -110,6 +110,35 @@ class EvalDatasetTest {
     void fingerprintChangesWhenNameChanges() {
         assertThat(new EvalDataset("d", List.of(base())).fingerprint())
                 .isNotEqualTo(new EvalDataset("e", List.of(base())).fingerprint());
+    }
+
+    @Test
+    void goldenFingerprintForDatasetUsingAllFields() {
+        EvalCase full = new EvalCase("a", "q", "ans", List.of("s"), false, List.of("t"), Map.of("k", "v"),
+                List.of("m2", "m1"), List.of("n"));
+
+        assertThat(new EvalDataset("g", List.of(full)).fingerprint())
+                .isEqualTo("31fa172ab54626b3ac73080f79bfe9d319d1a2be4a9062edc4656c1d0eba8379");
+    }
+
+    @Test
+    void fingerprintChangesWhenMustContainChanges() {
+        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(),
+                c.attributes(), List.of("x"), null));
+    }
+
+    @Test
+    void fingerprintChangesWhenMustNotContainChanges() {
+        assertChanges(c -> new EvalCase(c.id(), c.question(), c.expectedAnswer(), c.expectedSources(), false, c.tags(),
+                c.attributes(), null, List.of("x")));
+    }
+
+    @Test
+    void mustContainAndMustNotContainAreNotInterchangeable() {
+        EvalCase a = new EvalCase("a", "q", null, null, false, null, null, List.of("x"), null);
+        EvalCase b = new EvalCase("a", "q", null, null, false, null, null, null, List.of("x"));
+
+        assertThat(dataset(a).fingerprint()).isNotEqualTo(dataset(b).fingerprint());
     }
 
     @Test

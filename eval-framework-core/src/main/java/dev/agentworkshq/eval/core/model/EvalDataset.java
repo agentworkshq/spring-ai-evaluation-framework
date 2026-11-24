@@ -14,7 +14,7 @@ import java.util.Map;
 
 public record EvalDataset(String name, List<EvalCase> cases) {
 
-    private static final String FINGERPRINT_VERSION = "eval-dataset-v1";
+    private static final String FINGERPRINT_VERSION = "eval-dataset-v2";
 
     public EvalDataset {
         NameRules.require(name, "name");
@@ -51,6 +51,8 @@ public record EvalDataset(String name, List<EvalCase> cases) {
                     string(out, e.getKey());
                     string(out, e.getValue());
                 }
+                strings(out, c.mustContain());
+                strings(out, c.mustNotContain());
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);

@@ -55,7 +55,8 @@ public final class DatasetLoader {
     private static final Pattern SEPARATORS = Pattern.compile("[/\\\\]");
     private static final Set<String> TOP_FIELDS = Set.of("name", "cases");
     private static final Set<String> CASE_FIELDS =
-            Set.of("id", "question", "expectedAnswer", "expectedSources", "expectNoAnswer", "tags", "attributes");
+            Set.of("id", "question", "expectedAnswer", "expectedSources", "expectNoAnswer", "tags", "attributes",
+                    "mustContain", "mustNotContain");
     private static final String QUOTE_HINT = "; quote the value (for example \"001\")";
 
     private final Path root;
@@ -347,11 +348,16 @@ public final class DatasetLoader {
         boolean expectNoAnswer = readBoolean(node, "expectNoAnswer", label, where);
         List<String> tags = readStringList(node, "tags", label, where);
         Map<String, String> attributes = readStringMap(node, "attributes", label, where);
+        List<String> mustContain = readStringList(node, "mustContain", label, where);
+        List<String> mustNotContain = readStringList(node, "mustNotContain", label, where);
         EvalCase evalCase;
         try {
-            evalCase = new EvalCase(id, question, expectedAnswer, sources, expectNoAnswer, tags, attributes);
+            evalCase = new EvalCase(id, question, expectedAnswer, sources, expectNoAnswer, tags, attributes,
+                    mustContain, mustNotContain);
         } catch (ValidationException e) {
-            throw new ValidationException(ErrorMessages.EVAL_E008, e, label, where + ", " + e.getMessage());
+            String prefix = ErrorMessages.EVAL_E010.format("");
+            String detail = e.getMessage().startsWith(prefix) ? e.getMessage().substring(prefix.length()) : e.getMessage();
+            throw new ValidationException(ErrorMessages.EVAL_E008, e, label, where + ": " + detail);
         }
         if (!ids.add(id)) {
             throw invalid(label, where, "field 'id' duplicates an earlier case: '" + id + "'");
@@ -430,7 +436,7 @@ public final class DatasetLoader {
     }
 
     private static ValidationException invalid(String label, String where, String detail) {
-        return new ValidationException(ErrorMessages.EVAL_E008, label, where + ", " + detail);
+        return new ValidationException(ErrorMessages.EVAL_E008, label, where + ": " + detail);
     }
 
     private static ValidationException malformed(String label, JacksonException cause, TokenStreamLocation location, int line) {

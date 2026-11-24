@@ -445,6 +445,67 @@ class DatasetLoaderTest {
     }
 
     @Test
+    void phraseFieldsLoadInAllFormatsWithSameFingerprint() throws IOException {
+        write("m.yaml", "name: m\ncases:\n  - id: a\n    question: q\n    mustContain: [y, x]\n    mustNotContain: [z]\n");
+        write("m.json", "{\"name\":\"m\",\"cases\":[{\"id\":\"a\",\"question\":\"q\",\"mustContain\":[\"y\",\"x\"],\"mustNotContain\":[\"z\"]}]}");
+        write("m.jsonl", "{\"id\":\"a\",\"question\":\"q\",\"mustContain\":[\"y\",\"x\"],\"mustNotContain\":[\"z\"]}\n");
+
+        EvalDataset yaml = loader().load("m.yaml");
+
+        assertThat(yaml.cases().get(0).mustContain()).containsExactly("x", "y");
+        assertThat(yaml.cases().get(0).mustNotContain()).containsExactly("z");
+        assertThat(loader().load("m.json").fingerprint()).isEqualTo(yaml.fingerprint());
+        assertThat(loader().load("m.jsonl").fingerprint()).isEqualTo(yaml.fingerprint());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "\"mustContain\": \"x\"",
+        "\"mustContain\": [1]",
+        "\"mustNotContain\": {\"a\": \"b\"}",
+        "\"mustNotContain\": [true]",
+        "\"mustContain\": [\" \"]",
+        "\"mustContain\": [\"p\", \"p\"]",
+        "\"mustNotContain\": [\"SECRET-QUESTION-TEXT\", \"SECRET-QUESTION-TEXT\"]",
+        "\"expectNoAnswer\": true, \"mustContain\": [\"SECRET-QUESTION-TEXT\"]"
+    })
+    void phraseFieldsRejectBadValuesWithoutEchoingText(String fields) throws IOException {
+        String q = "\"id\":\"a\",\"question\":\"" + MARKER + "\",";
+        write("d.json", "{\"name\":\"d\",\"cases\":[{" + q + fields + "}]}");
+        write("d.jsonl", "{" + q + fields + "}\n");
+
+        for (String file : List.of("d.json", "d.jsonl")) {
+            BaseException e = thrown(() -> loader().load(file));
+            assertThat(e.getErrorCode()).isEqualTo("EVAL_E008");
+            assertNoMarker(e);
+        }
+    }
+
+    @Test
+    void phraseFieldLimitsAreEnforced() throws IOException {
+        String distinct = "[" + java.util.stream.IntStream.range(0, 21).mapToObj(i -> "\"p" + i + "\"")
+                .collect(java.util.stream.Collectors.joining(",")) + "]";
+        write("many.json", "{\"name\":\"d\",\"cases\":[{\"id\":\"a\",\"question\":\"q\",\"mustContain\":" + distinct + "}]}");
+        write("long.json", "{\"name\":\"d\",\"cases\":[{\"id\":\"a\",\"question\":\"q\",\"mustNotContain\":[\""
+                + "x".repeat(501) + "\"]}]}");
+
+        assertThat(thrown(() -> loader().load("many.json")).getMessage()).contains("mustContain");
+        assertThat(thrown(() -> loader().load("long.json")).getMessage()).contains("mustNotContain");
+    }
+
+    @Test
+    void caseErrorsReadWithoutRepeatedPrefix() throws IOException {
+        write("d.yaml", "name: d\ncases:\n  - id: a\n    question: q\n  - id: b\n    question: q\n    tags: [t, t]\n");
+        write("e.yaml", "name: d\ncases:\n  - id: a\n    question: q\n    bogus: 1\n");
+
+        BaseException duplicateTag = thrown(() -> loader().load("d.yaml"));
+        BaseException unknown = thrown(() -> loader().load("e.yaml"));
+
+        assertThat(duplicateTag.getMessage()).contains("case 2: field 'tags'").doesNotContain("Invalid argument");
+        assertThat(unknown.getMessage()).contains("case 1: unknown field 'bogus'");
+    }
+
+    @Test
     void formatLookupAndLimitsValidation() {
         assertThat(DatasetFormat.fromFileName("a.YML")).isEqualTo(DatasetFormat.YAML);
         assertThat(DatasetFormat.fromFileName("a.json")).isEqualTo(DatasetFormat.JSON);

@@ -34,26 +34,27 @@ class DatasetLoaderTest {
                 question: Question b
                 expectedAnswer: Answer b
                 expectedSources: [s1, s2]
-                expectNoAnswer: true
+                expectNoAnswer: false
                 tags: [t1, t2]
                 attributes: {k2: v2, k1: v1}
               - id: a
                 question: Question a
+                expectNoAnswer: true
             """;
 
     private static final String JSON = """
             {"name": "sample", "cases": [
               {"id": "b", "question": "Question b", "expectedAnswer": "Answer b",
-               "expectedSources": ["s1", "s2"], "expectNoAnswer": true,
+               "expectedSources": ["s1", "s2"], "expectNoAnswer": false,
                "tags": ["t1", "t2"], "attributes": {"k2": "v2", "k1": "v1"}},
-              {"id": "a", "question": "Question a"}
+              {"id": "a", "question": "Question a", "expectNoAnswer": true}
             ]}
             """;
 
     private static final String JSONL = """
-            {"id": "b", "question": "Question b", "expectedAnswer": "Answer b", "expectedSources": ["s1", "s2"], "expectNoAnswer": true, "tags": ["t1", "t2"], "attributes": {"k2": "v2", "k1": "v1"}}
+            {"id": "b", "question": "Question b", "expectedAnswer": "Answer b", "expectedSources": ["s1", "s2"], "expectNoAnswer": false, "tags": ["t1", "t2"], "attributes": {"k2": "v2", "k1": "v1"}}
 
-            {"id": "a", "question": "Question a"}
+            {"id": "a", "question": "Question a", "expectNoAnswer": true}
             """;
 
     @TempDir
@@ -122,13 +123,13 @@ class DatasetLoaderTest {
         assertThat(b.question()).isEqualTo("Question b");
         assertThat(b.expectedAnswer()).isEqualTo("Answer b");
         assertThat(b.expectedSources()).containsExactly("s1", "s2");
-        assertThat(b.expectNoAnswer()).isTrue();
+        assertThat(b.expectNoAnswer()).isFalse();
         assertThat(b.tags()).containsExactly("t1", "t2");
         assertThat(b.attributes()).isEqualTo(Map.of("k1", "v1", "k2", "v2"));
         EvalCase a = dataset.cases().get(0);
         assertThat(a.expectedAnswer()).isNull();
         assertThat(a.expectedSources()).isEmpty();
-        assertThat(a.expectNoAnswer()).isFalse();
+        assertThat(a.expectNoAnswer()).isTrue();
         assertThat(a.tags()).isEmpty();
         assertThat(a.attributes()).isEmpty();
     }

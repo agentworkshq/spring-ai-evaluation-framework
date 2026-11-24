@@ -4,4 +4,9 @@ Report vulnerabilities privately by email to oss@agentworkshq.dev. Please do not
 
 Only the latest 0.x release is supported.
 
-This library parses user-supplied documents, so reports about the parsers and about file name and path handling are especially welcome.
+This library reads dataset and run files and calls a judge model. Reports about the following are especially welcome:
+
+- path handling: traversal, symlinks and access outside the configured dataset or output directory
+- file parsing: malformed, oversized or hostile YAML, JSON and JSONL input
+- prompt injection against the judge model through answers, retrieved text or dataset text
+- credentials or personal data ending up in reports, run files or logs

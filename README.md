@@ -51,4 +51,6 @@ Parsing is strict:
 
 Limits, all configurable through `DatasetLimits`: 5 MB per file, 1000 cases, 64 KB per JSONL line, nesting depth 20. A file that goes over a limit is rejected while it is read.
 
+Exception causes can contain fragments of dataset content, for example a key name. A host application must not send stack traces to untrusted places.
+
 Datasets can contain real data. Do not commit datasets that contain personal data.

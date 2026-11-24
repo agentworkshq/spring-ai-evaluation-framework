@@ -1,10 +1,14 @@
 package dev.agentworkshq.eval.core.dataset;
 
+import dev.agentworkshq.eval.core.exception.BaseException;
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ResourceNotFoundException;
+import dev.agentworkshq.eval.core.exception.ServiceException;
 import dev.agentworkshq.eval.core.exception.ValidationException;
 import dev.agentworkshq.eval.core.model.EvalCase;
 import dev.agentworkshq.eval.core.model.EvalDataset;
+import dev.agentworkshq.eval.core.model.NameRules;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -14,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -65,7 +70,7 @@ public final class DatasetLoader {
         try {
             this.root = root.toRealPath();
         } catch (IOException e) {
-            throw new ResourceNotFoundException(ErrorMessages.EVAL_E002, e, "dataset root");
+            throw ioFailure(e, "dataset root");
         }
         if (!Files.isDirectory(this.root)) {
             throw new ValidationException(ErrorMessages.EVAL_E003, "dataset root is not a directory");
@@ -109,7 +114,7 @@ public final class DatasetLoader {
         try {
             real = root.resolve(relative).toRealPath();
         } catch (IOException e) {
-            throw new ResourceNotFoundException(ErrorMessages.EVAL_E002, e, label);
+            throw ioFailure(e, label);
         }
         if (!real.startsWith(root) || !Files.isRegularFile(real, LinkOption.NOFOLLOW_LINKS)) {
             throw new ValidationException(ErrorMessages.EVAL_E003, label);
@@ -119,7 +124,7 @@ public final class DatasetLoader {
         try (InputStream in = Files.newInputStream(real, LinkOption.NOFOLLOW_LINKS)) {
             bytes = readCapped(in, limits.maxFileBytes(), label);
         } catch (IOException e) {
-            throw new ResourceNotFoundException(ErrorMessages.EVAL_E002, e, label);
+            throw ioFailure(e, label);
         }
 
         EvalDataset dataset = build(label, format, bytes, format.stripExtension(fileName));
@@ -143,6 +148,13 @@ public final class DatasetLoader {
         EvalDataset dataset = build(label, format, bytes, datasetName);
         log.debug("Parsed dataset {} with {} cases", label, dataset.cases().size());
         return dataset;
+    }
+
+    private static BaseException ioFailure(IOException e, String label) {
+        if (e instanceof NoSuchFileException || e instanceof FileNotFoundException) {
+            return new ResourceNotFoundException(ErrorMessages.EVAL_E002, e, label);
+        }
+        return new ServiceException(ErrorMessages.EVAL_E009, e, label);
     }
 
     static String safe(String text, int max) {
@@ -194,7 +206,7 @@ public final class DatasetLoader {
     private EvalDataset build(String label, DatasetFormat format, byte[] bytes, String jsonlName) {
         int offset = hasBom(bytes) ? 3 : 0;
         if (format == DatasetFormat.JSONL) {
-            if (!EvalDataset.isValidName(jsonlName)) {
+            if (!NameRules.isValid(jsonlName)) {
                 throw invalid(label, "dataset", "field 'name' is not a valid dataset name");
             }
             return new EvalDataset(jsonlName, readJsonl(bytes, offset, label));
@@ -225,7 +237,7 @@ public final class DatasetLoader {
         }
         rejectUnknown(root, TOP_FIELDS, label, "top level");
         String name = readString(root, "name", true, label, "top level");
-        if (!EvalDataset.isValidName(name)) {
+        if (!NameRules.isValid(name)) {
             throw invalid(label, "top level", "field 'name' is not a valid dataset name");
         }
         JsonNode cases = root.get("cases");
@@ -329,22 +341,22 @@ public final class DatasetLoader {
     private EvalCase mapCase(JsonNode node, String label, String where, Set<String> ids) {
         rejectUnknown(node, CASE_FIELDS, label, where);
         String id = readString(node, "id", true, label, where);
-        if (id.isBlank()) {
-            throw invalid(label, where, "field 'id' must not be blank");
-        }
-        if (!ids.add(id)) {
-            throw invalid(label, where, "field 'id' duplicates an earlier case: '" + safe(id, 64) + "'");
-        }
         String question = readString(node, "question", true, label, where);
-        if (question.isBlank()) {
-            throw invalid(label, where, "field 'question' must not be blank");
-        }
         String expectedAnswer = readString(node, "expectedAnswer", false, label, where);
         List<String> sources = readStringList(node, "expectedSources", label, where);
         boolean expectNoAnswer = readBoolean(node, "expectNoAnswer", label, where);
         List<String> tags = readStringList(node, "tags", label, where);
         Map<String, String> attributes = readStringMap(node, "attributes", label, where);
-        return new EvalCase(id, question, expectedAnswer, sources, expectNoAnswer, tags, attributes);
+        EvalCase evalCase;
+        try {
+            evalCase = new EvalCase(id, question, expectedAnswer, sources, expectNoAnswer, tags, attributes);
+        } catch (ValidationException e) {
+            throw new ValidationException(ErrorMessages.EVAL_E008, e, label, where + ", " + e.getMessage());
+        }
+        if (!ids.add(id)) {
+            throw invalid(label, where, "field 'id' duplicates an earlier case: '" + id + "'");
+        }
+        return evalCase;
     }
 
     private void rejectUnknown(JsonNode node, Set<String> allowed, String label, String where) {

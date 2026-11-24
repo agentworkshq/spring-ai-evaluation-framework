@@ -83,4 +83,43 @@ Text matching for the contains metrics: Unicode NFKC, lowercase, runs of whitesp
 | `CitationGroundingMetric` | `citation_grounded` | nothing | nothing was cited | fraction of cited entries that match a retrieved chunk, passes only at 1.0 |
 | `LatencyMetric(max)` | `latency` | nothing | never | passes when latency is at most `max` |
 
+`RegexMetric` checks its deadline only when the matcher reads characters. It is a safety net, not a hard real-time limit. Patterns must always come from code, never from datasets or users.
+
 The retrieval metrics are `FAILED` with score 0.0 when nothing was retrieved. `k` is 1 to 100 and thresholds are 0 to 1. The regex pattern must come from code, never from a dataset.
+
+## Runner
+
+`EvalRunner.run(dataset, target, metrics, config)` runs every selected case against the target, evaluates the metrics and returns an `EvalRun`. A `RunListener` can be passed as a fifth argument. It is called from worker threads once per case with the result, the number of finished cases and the total, including cases skipped by a budget. An exception thrown by a listener is swallowed.
+
+`RunConfig` fields, each with `with...` methods that return a new instance:
+
+| Field | Default | Rule |
+| --- | --- | --- |
+| `runId` | generated | `<datasetName>-<UTC yyyyMMdd'T'HHmmssSSS>` from the clock, the dataset name is cut so the id has at most 100 characters |
+| `maxCases` | 1000 | 1 to 100000. A selection above it is rejected, a dataset is never truncated |
+| `includeTags` | empty (all cases) | a case is selected when it has at least one of the tags |
+| `concurrency` | 1 | 1 to 16, the most target calls running at once |
+| `perCaseTimeout` | 60 s | time box for one target call |
+| `perMetricTimeout` | 60 s | time box for one metric call |
+| `totalTimeout` | 30 min | after it no new case is started |
+| `maxAttempts` | 1 | 1 to 5, target calls only |
+| `retryDelay` | 0 | wait between attempts |
+| `maxAbandonedCalls` | `concurrency` | at least 1 |
+| `labels` | none | at most 20 entries, keys and values at most 200 characters |
+
+Durations must be positive (`retryDelay` may be zero) and at most 365 days.
+
+Behaviour:
+
+- Cases are sorted by id and results are collected by id, so the order of `caseResults` never depends on which case finished first. The same input with the same clock gives an equal `EvalRun`.
+- The target must be thread safe when `concurrency` is above 1.
+- A target that throws is retried up to `maxAttempts` times with `retryDelay` between attempts, then the case is `TARGET_FAILED`. A timeout or an interrupt is never retried. A target that returns null counts as a failure.
+- A target that exceeds `perCaseTimeout` gives `TIMED_OUT` and its thread is interrupted. The runner cannot kill a thread that ignores interrupts. If the call is still running 1 second after the interrupt it is counted as abandoned and it is no longer counted against `concurrency`. When abandoned calls exceed `maxAbandonedCalls`, no new case is started, every case that has not started is `SKIPPED_BUDGET` and the run finishes normally. Metric calls that ignore their time box are counted the same way.
+- A metric that throws, returns null, returns a result with another name or exceeds `perMetricTimeout` becomes an `ERROR` result. The other metrics still run and the case stays `COMPLETED` with its output.
+- After `totalTimeout` the remaining cases are `SKIPPED_BUDGET` with no output, no metric results and a zero duration. Running cases finish within their own time boxes.
+- If the calling thread is interrupted, the run is cancelled, the interrupt flag is restored and a `ServiceException` (`EVAL_E016`) is thrown. The runner creates daemon threads named `eval-runner-*` and always shuts them down.
+- `errorMessage` and metric error reasons contain the exception class name and the attempt count only, never an exception message, so they cannot leak the question or the answer.
+
+The run config contains exactly these entries: `runner.concurrency`, `runner.perCaseTimeoutMs`, `runner.perMetricTimeoutMs`, `runner.totalTimeoutMs`, `runner.maxAttempts`, `runner.maxCases`, `runner.includeTags` (sorted, comma separated), `runner.selectedCases`, `runner.abandonedCalls`, `dataset.caseCount`, `metrics` (sorted names, comma separated), `library.version` (`unknown` when the package has no implementation version) and one `label.<key>` per label.
+
+Labels are free text copied into run files and reports. Do not put secrets in them. A label key that looks like a credential is rejected.

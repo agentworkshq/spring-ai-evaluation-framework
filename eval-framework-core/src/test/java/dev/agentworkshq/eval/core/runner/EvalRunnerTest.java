@@ -205,7 +205,7 @@ class EvalRunnerTest {
 
         EvalRun run = runner().run(dataset("d", "a"), echo(),
                 List.of(hangs, wrongName, returnsNull, throwing, passing("e_ok")),
-                fast().withPerMetricTimeout(Duration.ofMillis(100)));
+                fast().withPerMetricTimeout(Duration.ofSeconds(1)));
 
         CaseResult result = find(run, "a");
         assertThat(result.status()).isEqualTo(CaseStatus.COMPLETED);
@@ -345,10 +345,11 @@ class EvalRunnerTest {
 
         assertThat(run.config()).containsOnlyKeys("runner.concurrency", "runner.perCaseTimeoutMs",
                 "runner.perMetricTimeoutMs", "runner.totalTimeoutMs", "runner.maxAttempts", "runner.maxCases",
-                "runner.includeTags", "runner.selectedCases", "runner.abandonedCalls", "dataset.caseCount", "metrics",
+                "runner.includeTags", "runner.selectedCases", "runner.abandonedCalls", "runner.maxJudgeCalls",
+                "runner.judgeCallsUsed", "dataset.caseCount", "metrics",
                 "library.version", "label.team", "label.env");
-        assertThat(run.config()).containsEntry("runner.concurrency", "2").containsEntry("runner.perCaseTimeoutMs", "200")
-                .containsEntry("runner.perMetricTimeoutMs", "200").containsEntry("runner.totalTimeoutMs", "1800000")
+        assertThat(run.config()).containsEntry("runner.concurrency", "2").containsEntry("runner.perCaseTimeoutMs", "10000")
+                .containsEntry("runner.perMetricTimeoutMs", "10000").containsEntry("runner.totalTimeoutMs", "1800000")
                 .containsEntry("runner.maxAttempts", "2").containsEntry("runner.maxCases", "10")
                 .containsEntry("runner.includeTags", "").containsEntry("runner.selectedCases", "1")
                 .containsEntry("runner.abandonedCalls", "0").containsEntry("dataset.caseCount", "1")

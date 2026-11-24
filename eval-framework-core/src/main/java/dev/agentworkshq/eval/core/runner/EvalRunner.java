@@ -3,6 +3,7 @@ package dev.agentworkshq.eval.core.runner;
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ServiceException;
 import dev.agentworkshq.eval.core.exception.ValidationException;
+import dev.agentworkshq.eval.core.judge.RunContext;
 import dev.agentworkshq.eval.core.metric.Metric;
 import dev.agentworkshq.eval.core.model.CaseResult;
 import dev.agentworkshq.eval.core.model.CaseStatus;
@@ -84,6 +85,10 @@ public final class EvalRunner {
             throw new ValidationException(ErrorMessages.EVAL_E013, selected.size(), config.maxCases());
         }
 
+        Map<String, String> extraConfig = extraConfig(target, metricList);
+        warnWhenJudgeIsTarget(target, metricList);
+        RunContext context = RunContext.of(config.maxJudgeCalls());
+
         Instant startedAt = clock.instant();
         String runId = config.runId() != null ? config.runId() : generateRunId(dataset.name(), startedAt);
         log.info("Evaluation run started: {} of {} cases selected, concurrency {}", selected.size(),
@@ -91,7 +96,7 @@ public final class EvalRunner {
 
         TimeBox box = new TimeBox(graceMillis);
         ExecutorService workers = Executors.newFixedThreadPool(config.concurrency(), daemonThreads());
-        Execution execution = new Execution(target, metricList, config, listener, box, selected.size());
+        Execution execution = new Execution(target, metricList, config, listener, box, context, selected.size());
         Map<String, CaseResult> results = new ConcurrentHashMap<>();
         try {
             List<Future<?>> futures = new ArrayList<>();
@@ -118,7 +123,7 @@ public final class EvalRunner {
             finishedAt = startedAt;
         }
         EvalRun run = new EvalRun(runId, dataset.name(), dataset.fingerprint(), target.name(), startedAt, finishedAt,
-                snapshot(config, metricList, dataset, selected.size(), box.abandonedCalls()), ordered);
+                snapshot(config, metricList, dataset, selected.size(), box.abandonedCalls(), context, extraConfig), ordered);
         log.info("Evaluation run finished: {} cases, {} completed, {} target failures, {} timeouts, {} skipped, {} ms",
                 ordered.size(), count(ordered, CaseStatus.COMPLETED), count(ordered, CaseStatus.TARGET_FAILED),
                 count(ordered, CaseStatus.TIMED_OUT), count(ordered, CaseStatus.SKIPPED_BUDGET),
@@ -158,7 +163,7 @@ public final class EvalRunner {
     }
 
     private static Map<String, String> snapshot(RunConfig config, List<Metric> metrics, EvalDataset dataset,
-            int selected, int abandoned) {
+            int selected, int abandoned, RunContext context, Map<String, String> extraConfig) {
         Map<String, String> map = new TreeMap<>();
         map.put("runner.concurrency", String.valueOf(config.concurrency()));
         map.put("runner.perCaseTimeoutMs", String.valueOf(config.perCaseTimeout().toMillis()));
@@ -169,13 +174,48 @@ public final class EvalRunner {
         map.put("runner.includeTags", String.join(",", config.includeTags()));
         map.put("runner.selectedCases", String.valueOf(selected));
         map.put("runner.abandonedCalls", String.valueOf(abandoned));
+        map.put("runner.maxJudgeCalls", String.valueOf(context.budget().max()));
+        map.put("runner.judgeCallsUsed", String.valueOf(context.budget().used()));
         map.put("dataset.caseCount", String.valueOf(dataset.cases().size()));
         map.put("metrics", metrics.stream().map(Metric::name).sorted().collect(Collectors.joining(",")));
         Package pkg = EvalRunner.class.getPackage();
         String version = pkg == null ? null : pkg.getImplementationVersion();
         map.put("library.version", version == null ? "unknown" : version);
         config.labels().forEach((key, value) -> map.put("label." + key, value));
+        map.putAll(extraConfig);
         return map;
+    }
+
+    private static Map<String, String> extraConfig(EvalTarget target, List<Metric> metrics) {
+        Map<String, String> extra = new TreeMap<>();
+        for (Metric metric : metrics) {
+            addEntries(extra, "metric." + metric.name() + ".", metric.runConfig());
+        }
+        addEntries(extra, "target.", target.describe());
+        return extra;
+    }
+
+    private static void addEntries(Map<String, String> into, String prefix, Map<String, String> entries) {
+        if (entries == null) {
+            return;
+        }
+        for (Map.Entry<String, String> e : entries.entrySet()) {
+            String key = prefix + e.getKey();
+            EvalRun.requireSafeConfigKey(key);
+            if (e.getValue() == null || e.getValue().length() > 200) {
+                throw new ValidationException(ErrorMessages.EVAL_E011,
+                        "config entry '" + key.replaceAll("\\p{Cntrl}", "?") + "' must have a value of at most 200 characters");
+            }
+            into.put(key, e.getValue());
+        }
+    }
+
+    private static void warnWhenJudgeIsTarget(EvalTarget target, List<Metric> metrics) {
+        Map<String, String> described = target.describe();
+        String model = described == null ? null : described.get("model");
+        if (model != null && metrics.stream().anyMatch(m -> model.equals(m.runConfig().get("judge")))) {
+            log.warn("The target model and the judge model are both '{}', a model should not grade its own answers", model);
+        }
     }
 
     private static long count(List<CaseResult> results, CaseStatus status) {
@@ -215,17 +255,19 @@ public final class EvalRunner {
         private final RunConfig config;
         private final RunListener listener;
         private final TimeBox box;
+        private final RunContext context;
         private final int total;
         private final long deadline;
         private final AtomicInteger completed = new AtomicInteger();
 
         Execution(EvalTarget target, List<Metric> metrics, RunConfig config, RunListener listener, TimeBox box,
-                int total) {
+                RunContext context, int total) {
             this.target = target;
             this.metrics = metrics;
             this.config = config;
             this.listener = listener;
             this.box = box;
+            this.context = context;
             this.total = total;
             this.deadline = System.nanoTime() + config.totalTimeout().toNanos();
         }
@@ -304,7 +346,7 @@ public final class EvalRunner {
             long metricMillis = config.perMetricTimeout().toMillis();
             List<MetricResult> results = new ArrayList<>();
             for (Metric metric : metrics) {
-                TimeBox.Outcome<MetricResult> outcome = box.run(() -> metric.evaluate(evalCase, output), metricMillis);
+                TimeBox.Outcome<MetricResult> outcome = box.run(() -> metric.evaluate(evalCase, output, context), metricMillis);
                 results.add(switch (outcome.state()) {
                     case TIMED_OUT -> MetricResult.error(metric.name(), "metric timed out");
                     case FAILED -> MetricResult.error(metric.name(), "metric failed with " + className(outcome.error()));

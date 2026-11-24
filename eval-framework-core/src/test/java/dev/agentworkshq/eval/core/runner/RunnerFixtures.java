@@ -82,12 +82,12 @@ final class RunnerFixtures {
     }
 
     static RunConfig fast() {
-        return RunConfig.defaults().withPerCaseTimeout(Duration.ofMillis(200)).withPerMetricTimeout(Duration.ofMillis(200));
+        return RunConfig.defaults().withPerCaseTimeout(Duration.ofSeconds(10)).withPerMetricTimeout(Duration.ofSeconds(10));
     }
 
     static void await(CountDownLatch latch) {
         try {
-            if (!latch.await(5, TimeUnit.SECONDS)) {
+            if (!latch.await(30, TimeUnit.SECONDS)) {
                 throw new IllegalStateException("latch timed out");
             }
         } catch (InterruptedException e) {

@@ -32,6 +32,7 @@ class RunConfigTest {
         assertThat(c.maxAttempts()).isEqualTo(1);
         assertThat(c.retryDelay()).isEqualTo(Duration.ZERO);
         assertThat(c.effectiveMaxAbandonedCalls()).isEqualTo(1);
+        assertThat(c.maxJudgeCalls()).isEqualTo(500);
         assertThat(c.labels()).isEmpty();
     }
 
@@ -57,6 +58,10 @@ class RunConfigTest {
         rejects(() -> RunConfig.defaults().withMaxAttempts(0));
         rejects(() -> RunConfig.defaults().withMaxAttempts(6));
         rejects(() -> RunConfig.defaults().withMaxAbandonedCalls(0));
+        rejects(() -> RunConfig.defaults().withMaxJudgeCalls(-1));
+        rejects(() -> RunConfig.defaults().withMaxJudgeCalls(100_001));
+        assertThat(RunConfig.defaults().withMaxJudgeCalls(0).maxJudgeCalls()).isZero();
+        assertThat(RunConfig.defaults().withMaxJudgeCalls(100_000).maxJudgeCalls()).isEqualTo(100_000);
         assertThat(RunConfig.defaults().withMaxCases(100_000).withConcurrency(16).withMaxAttempts(5).maxAttempts()).isEqualTo(5);
     }
 

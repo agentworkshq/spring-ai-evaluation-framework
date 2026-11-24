@@ -22,6 +22,7 @@ public record RunConfig(
         int maxAttempts,
         Duration retryDelay,
         Integer maxAbandonedCalls,
+        int maxJudgeCalls,
         Map<String, String> labels) {
 
     private static final Duration LONGEST = Duration.ofDays(365);
@@ -49,12 +50,15 @@ public record RunConfig(
         if (maxAbandonedCalls != null && maxAbandonedCalls < 1) {
             throw bad("maxAbandonedCalls must be at least 1");
         }
+        if (maxJudgeCalls < 0 || maxJudgeCalls > 100_000) {
+            throw bad("maxJudgeCalls must be between 0 and 100000");
+        }
         labels = labels(labels);
     }
 
     public static RunConfig defaults() {
         return new RunConfig(null, 1000, Set.of(), 1, Duration.ofSeconds(60), Duration.ofSeconds(60),
-                Duration.ofMinutes(30), 1, Duration.ZERO, null, Map.of());
+                Duration.ofMinutes(30), 1, Duration.ZERO, null, 500, Map.of());
     }
 
     public int effectiveMaxAbandonedCalls() {
@@ -63,57 +67,62 @@ public record RunConfig(
 
     public RunConfig withRunId(String value) {
         return new RunConfig(value, maxCases, includeTags, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
-                maxAttempts, retryDelay, maxAbandonedCalls, labels);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withMaxCases(int value) {
         return new RunConfig(runId, value, includeTags, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
-                maxAttempts, retryDelay, maxAbandonedCalls, labels);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withIncludeTags(Set<String> value) {
         return new RunConfig(runId, maxCases, value, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
-                maxAttempts, retryDelay, maxAbandonedCalls, labels);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withConcurrency(int value) {
         return new RunConfig(runId, maxCases, includeTags, value, perCaseTimeout, perMetricTimeout, totalTimeout,
-                maxAttempts, retryDelay, maxAbandonedCalls, labels);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withPerCaseTimeout(Duration value) {
         return new RunConfig(runId, maxCases, includeTags, concurrency, value, perMetricTimeout, totalTimeout,
-                maxAttempts, retryDelay, maxAbandonedCalls, labels);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withPerMetricTimeout(Duration value) {
         return new RunConfig(runId, maxCases, includeTags, concurrency, perCaseTimeout, value, totalTimeout,
-                maxAttempts, retryDelay, maxAbandonedCalls, labels);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withTotalTimeout(Duration value) {
         return new RunConfig(runId, maxCases, includeTags, concurrency, perCaseTimeout, perMetricTimeout, value,
-                maxAttempts, retryDelay, maxAbandonedCalls, labels);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withMaxAttempts(int value) {
         return new RunConfig(runId, maxCases, includeTags, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
-                value, retryDelay, maxAbandonedCalls, labels);
+                value, retryDelay, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withRetryDelay(Duration value) {
         return new RunConfig(runId, maxCases, includeTags, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
-                maxAttempts, value, maxAbandonedCalls, labels);
+                maxAttempts, value, maxAbandonedCalls, maxJudgeCalls, labels);
     }
 
     public RunConfig withMaxAbandonedCalls(Integer value) {
         return new RunConfig(runId, maxCases, includeTags, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
-                maxAttempts, retryDelay, value, labels);
+                maxAttempts, retryDelay, value, maxJudgeCalls, labels);
+    }
+
+    public RunConfig withMaxJudgeCalls(int value) {
+        return new RunConfig(runId, maxCases, includeTags, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
+                maxAttempts, retryDelay, maxAbandonedCalls, value, labels);
     }
 
     public RunConfig withLabels(Map<String, String> value) {
         return new RunConfig(runId, maxCases, includeTags, concurrency, perCaseTimeout, perMetricTimeout, totalTimeout,
-                maxAttempts, retryDelay, maxAbandonedCalls, value);
+                maxAttempts, retryDelay, maxAbandonedCalls, maxJudgeCalls, value);
     }
 
     private static ValidationException bad(String detail) {

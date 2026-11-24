@@ -105,6 +105,7 @@ The retrieval metrics are `FAILED` with score 0.0 when nothing was retrieved. `k
 | `maxAttempts` | 1 | 1 to 5, target calls only |
 | `retryDelay` | 0 | wait between attempts |
 | `maxAbandonedCalls` | `concurrency` | at least 1 |
+| `maxJudgeCalls` | 500 | 0 to 100000, the most LLM judge calls in one run |
 | `labels` | none | at most 20 entries, keys and values at most 200 characters |
 
 Durations must be positive (`retryDelay` may be zero) and at most 365 days.
@@ -120,6 +121,47 @@ Behaviour:
 - If the calling thread is interrupted, the run is cancelled, the interrupt flag is restored and a `ServiceException` (`EVAL_E016`) is thrown. The runner creates daemon threads named `eval-runner-*` and always shuts them down.
 - `errorMessage` and metric error reasons contain the exception class name and the attempt count only, never an exception message, so they cannot leak the question or the answer.
 
-The run config contains exactly these entries: `runner.concurrency`, `runner.perCaseTimeoutMs`, `runner.perMetricTimeoutMs`, `runner.totalTimeoutMs`, `runner.maxAttempts`, `runner.maxCases`, `runner.includeTags` (sorted, comma separated), `runner.selectedCases`, `runner.abandonedCalls`, `dataset.caseCount`, `metrics` (sorted names, comma separated), `library.version` (`unknown` when the package has no implementation version) and one `label.<key>` per label.
+The run config contains exactly these entries: `runner.concurrency`, `runner.perCaseTimeoutMs`, `runner.perMetricTimeoutMs`, `runner.totalTimeoutMs`, `runner.maxAttempts`, `runner.maxCases`, `runner.includeTags` (sorted, comma separated), `runner.selectedCases`, `runner.abandonedCalls`, `runner.maxJudgeCalls`, `runner.judgeCallsUsed`, `dataset.caseCount`, `metrics` (sorted names, comma separated), `library.version` (`unknown` when the package has no implementation version) one `label.<key>` per label, one `metric.<metricName>.<key>` per entry of `Metric.runConfig()` and one `target.<key>` per entry of `EvalTarget.describe()`. Those keys go through the same credential check as above and values are at most 200 characters, otherwise the run is rejected before it starts and the message names the key. A metric or target must only report known, non-secret settings.
+
+If `describe()` has a `model` entry equal to the `judge` entry of a metric, the runner logs one warning, because a model should not grade its own answers.
 
 Labels are free text copied into run files and reports. Do not put secrets in them. A label key that looks like a credential is rejected.
+
+## LLM judge metrics
+
+**Warning: the question, the answer and the retrieved chunks are sent to the judge model. With a cloud model your data leaves your machine.**
+
+| Metric | Name | Rubric | Skipped when | Short circuit |
+| --- | --- | --- | --- | --- |
+| `FaithfulnessMetric` | `faithfulness` | is every claim of the answer supported by the retrieved context | `expectNoAnswer`, output not answered, blank answer | `FAILED` with 0.0 and "no retrieved context" when nothing (or only blank text) was retrieved, no judge call |
+| `AnswerRelevancyMetric` | `answer_relevancy` | does the answer address the question | same | none |
+| `CorrectnessMetric` | `correctness` | does the answer agree with the expected answer | no `expectedAnswer` or `expectNoAnswer` | none |
+
+Constructor arguments: the `JudgeModel`, `repeats` (1 to 5, default 1), `passScore` (1 to 5, default 4) and optional `JudgeLimits` with the maximum characters per section (question 2000, answer 6000, retrieved context 12000 in total, expected answer 4000). Rubric text lives only in code and is never read from datasets or users.
+
+Scoring: the judge gives an integer s from 1 to 5. With several repeats the mean is used. The metric score is (mean - 1) / 4, so 1 gives 0.0, 3 gives 0.5 and 5 gives 1.0. The metric passes when the mean is at least `passScore`. The reason has only numbers, for example `judge scores 4,4,5 mean 4.33 pass score 4`, plus `input truncated` when a section was cut.
+
+Budget: every run has `maxJudgeCalls`. A metric first decides whether to skip or short circuit, which costs nothing, then takes `repeats` calls from the budget all at once. If they are not available the result is `ERROR` with "judge call budget exhausted", and no call is made. It is an error and not a failure or a skip because the case was not judged: a silent zero or pass would hide that the run hit its cost limit. With one worker, cases run in id order, so the earlier cases get the budget.
+
+Hardening:
+
+- Each data section is wrapped in begin and end markers that contain a fresh random nonce for every prompt. Marker-like text inside the data is neutralized, and the system prompt says everything between the markers is untrusted data that must never be followed as instructions.
+- Sections are cut at their maximum length, never inside a surrogate pair.
+- The reply must be exactly one JSON object (one markdown code fence is allowed) with an integer `score` from 1 to 5. Anything else, including trailing text, duplicate keys, a decimal or a string score, or a reply over 2000 characters, makes the metric `ERROR` with "invalid judge reply". Only the integer score is used. Other keys and the judge's text are never stored, logged or put in a reason.
+- A judge that throws gives `ERROR` with the exception class name only. A result is never built from partial repeats.
+
+Advice: use a judge model that differs from the target model, keep the temperature at 0 (`ChatClientJudgeModel` does), and raise `repeats` when scores look noisy. `perMetricTimeout` must be at least `repeats` times the judge latency, otherwise the metric ends as `ERROR` "metric timed out".
+
+```java
+JudgeModel judge = new ChatClientJudgeModel(chatClientBuilder, "gpt-4o-mini");
+List<Metric> metrics = List.of(
+        new FaithfulnessMetric(judge, 3, 4),
+        new AnswerRelevancyMetric(judge),
+        new SpringAiEvaluatorMetric("spring_ai_relevancy", new RelevancyEvaluator(chatClientBuilder)));
+EvalRun run = new EvalRunner().run(dataset, target, metrics,
+        RunConfig.defaults().withMaxJudgeCalls(200).withPerMetricTimeout(Duration.ofSeconds(120)));
+```
+
+`ChatClientJudgeModel` sends one system and one user message as message objects, so braces in the text are not treated as template variables. The identifier ends up in run files: at most 100 characters, no control characters, no URL and nothing that looks like a key or token.
+
+`SpringAiEvaluatorMetric(name, evaluator)` wraps any Spring AI `Evaluator`. It spends one judge call per case, gives 1.0 for a pass and 0.0 for a fail, is skipped when the output was not answered, and turns an exception into `ERROR` with the class name only. **It uses Spring AI's own prompt template, so it does not get the nonce delimiters or the strict reply parsing described above.** Prefer the three metrics above for untrusted data.

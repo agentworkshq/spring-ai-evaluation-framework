@@ -98,17 +98,20 @@ class EvalRunnerTimeoutTest {
 
     @Test
     void totalTimeoutSkipsTheRemainingCasesWithoutOutput() {
+        long start = System.nanoTime();
         var slow = target(c -> {
-            try {
-                Thread.sleep(250);
-            } catch (InterruptedException e) {
-                throw new IllegalStateException();
+            while (System.nanoTime() - start < Duration.ofMillis(1300).toNanos()) {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    throw new IllegalStateException();
+                }
             }
             return output("x");
         });
 
         EvalRun run = runner().run(dataset("d", "a", "b", "c"), slow, List.of(passing("m")),
-                fast().withPerCaseTimeout(Duration.ofSeconds(5)).withTotalTimeout(SHORT));
+                fast().withTotalTimeout(Duration.ofSeconds(1)));
 
         assertThat(find(run, "a").status()).isEqualTo(CaseStatus.COMPLETED);
         for (String id : List.of("b", "c")) {

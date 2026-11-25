@@ -16,7 +16,13 @@ public enum ErrorMessages {
     EVAL_E013(400, "Too many cases for this run: %d selected (limit %d)"),
     EVAL_E014(400, "No cases selected for this run from dataset: %s"),
     EVAL_E015(400, "Duplicate metric names: %s"),
-    EVAL_E016(500, "Evaluation run was cancelled");
+    EVAL_E016(500, "Evaluation run was cancelled"),
+    EVAL_E017(404, "Run not found: %s"),
+    EVAL_E018(409, "Run already exists: %s"),
+    EVAL_E019(422, "Invalid run file: %s%s"),
+    EVAL_E020(400, "Invalid run store location: %s"),
+    EVAL_E021(413, "Too many runs in the store: %d (limit %d)"),
+    EVAL_E022(422, "Runs are not comparable: %s");
 
     private final int status;
     private final String message;

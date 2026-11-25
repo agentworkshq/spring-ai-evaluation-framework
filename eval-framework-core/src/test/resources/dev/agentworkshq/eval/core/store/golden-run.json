@@ -1,0 +1,80 @@
+{
+  "formatVersion": 1,
+  "runId": "run-1",
+  "datasetName": "ds",
+  "datasetFingerprint": "fp-abc",
+  "targetName": "target-a",
+  "startedAt": "2026-01-02T03:04:05.678Z",
+  "finishedAt": "2026-01-02T03:04:06Z",
+  "config": {
+    "metric.faithfulness.judge": "judge-1",
+    "runner.concurrency": "1"
+  },
+  "cases": [
+    {
+      "caseId": "a",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 12,
+      "answered": true,
+      "answerChars": 5,
+      "latencyMs": 3,
+      "retrievedCount": 2,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "all phrases present"
+        },
+        {
+          "metricName": "faithfulness",
+          "status": "FAILED",
+          "score": 0.3333333333333333,
+          "reason": "judge said \"no\""
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "no expected sources"
+        }
+      ]
+    },
+    {
+      "caseId": "b",
+      "status": "TARGET_FAILED",
+      "errorMessage": "IllegalStateException after 1 attempts",
+      "durationMs": 7,
+      "answered": null,
+      "answerChars": null,
+      "latencyMs": null,
+      "retrievedCount": null,
+      "metricResults": []
+    },
+    {
+      "caseId": "c",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 0,
+      "answered": false,
+      "answerChars": 0,
+      "latencyMs": 0,
+      "retrievedCount": 0,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 0.1,
+          "reason": ""
+        },
+        {
+          "metricName": "faithfulness",
+          "status": "ERROR",
+          "score": null,
+          "reason": "invalid judge reply"
+        }
+      ]
+    }
+  ]
+}

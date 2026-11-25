@@ -165,3 +165,60 @@ EvalRun run = new EvalRunner().run(dataset, target, metrics,
 `ChatClientJudgeModel` sends one system and one user message as message objects, so braces in the text are not treated as template variables. The identifier ends up in run files: at most 100 characters, no control characters, no URL and nothing that looks like a key or token.
 
 `SpringAiEvaluatorMetric(name, evaluator)` wraps any Spring AI `Evaluator`. It spends one judge call per case, gives 1.0 for a pass and 0.0 for a fail, is skipped when the output was not answered, and turns an exception into `ERROR` with the class name only. **It uses Spring AI's own prompt template, so it does not get the nonce delimiters or the strict reply parsing described above.** Prefer the three metrics above for untrusted data.
+
+## Run store
+
+A run is saved as a `StoredRun`, a copy of an `EvalRun` that keeps only safe fields: ids, statuses, durations, answer length, latency, number of retrieved chunks and the metric results. It never contains the question, the answer or any chunk text. `StoredRun.from(evalRun)` does the copy.
+
+`FileRunStore(root, StoreLimits)` keeps one file per run, named `run-<runId>.json`, in the root directory. The root is created when missing and must not be a regular file. Other files in the directory are ignored. Every path is resolved to its real path and must stay inside the root, so a symbolic link that leaves the root is rejected.
+
+File format (`formatVersion` 1): a JSON object with `formatVersion`, `runId`, `datasetName`, `datasetFingerprint`, `targetName`, `startedAt`, `finishedAt`, `config` and `cases`. Each case has `caseId`, `status`, `errorMessage`, `durationMs`, `answered`, `answerChars`, `latencyMs`, `retrievedCount` and `metricResults` (`metricName`, `status`, `score`, `reason`). Fields are written in a fixed order with a 2 space indent and LF line endings on every OS. Instants are ISO-8601 UTC strings, durations are integer milliseconds and scores use the shortest form that reads back to the same double.
+
+Reading is strict, like the dataset loader: an unknown `formatVersion`, an unknown or duplicate field, a wrong type (a string where a number is expected), trailing content, invalid UTF-8, a document that is too deep or too large, all fail with an error that names the file and, for a syntax error, the line and column. A byte order mark is accepted. Everything read goes through the record constructors again, so a hand edited file cannot create an invalid run.
+
+| Limit | Default |
+| --- | --- |
+| `maxFileBytes` | 20 MB |
+| `maxRuns` (most run files `list` and `latest` will scan) | 10000 |
+| `maxNestingDepth` | 20 |
+
+Labels and config values are free text copied from your `RunConfig`, they are limited to 200 characters but not checked for content. Do not put secrets in them. Config keys that look like a credential are rejected.
+
+Files are never overwritten. `save` fails when the run id already exists, also on a case insensitive file system where two ids differ only by case. It writes a temporary file in the same directory, flushes it to disk and moves it into place without replacing anything. `list` is sorted by start time then run id and fails, naming the file, when one file is corrupt. `latest(datasetName, targetName)` returns the run that started last, ties go to the greater run id.
+
+Baseline workflow:
+
+1. Run the evaluation and save it to an output directory outside `src`.
+2. Copy the run file you accept as the baseline into `src/test/resources/eval-baselines` and commit it.
+3. In a test, run again, load the baseline and compare.
+
+```java
+EvalRun run = new EvalRunner().run(dataset, target, metrics, RunConfig.defaults());
+RunStore store = new FileRunStore(Path.of("target/eval-runs"), StoreLimits.defaults());
+store.save(StoredRun.from(run));
+
+// later, in a test, once the file is committed
+RunStore baselines = new FileRunStore(Path.of("src/test/resources/eval-baselines"), StoreLimits.defaults());
+Comparison comparison = RunComparator.compare(
+        baselines.load("support-bot-baseline"), StoredRun.from(run), ComparisonConfig.defaults());
+assertThat(comparison.passesGate()).as(comparison.violations().toString()).isTrue();
+```
+
+Run ids must be valid names (letters, digits, `.`, `_`, `-`, at most 100 characters). Give the baseline run a fixed id with `RunConfig.withRunId`.
+
+## Regression gate
+
+`RunSummary.of(storedRun)` gives the case counts per status and one `MetricAggregate` per metric. For each metric:
+
+- Mean score: the mean of the scores of `PASSED` and `FAILED` results. It is empty when there are none.
+- Pass rate: `PASSED` divided by `PASSED` plus `FAILED` plus `ERROR`. It is empty when that sum is 0. An `ERROR` counts against the pass rate because the case was not judged. `SKIPPED` never counts.
+
+`RunComparator.compare(baseline, candidate, ComparisonConfig)` pairs the cases by id and returns a `Comparison` with metric verdicts, case changes and a list of violations. `passesGate()` is true when there are no violations. Runs of different datasets, or of different dataset content while `requireSameDataset` is true, are an error. With `requireSameDataset` false only the common cases are compared and the extra case ids are listed.
+
+A metric is `REGRESSED` when its mean score or pass rate drops by more than the tolerance, or when it has more errors than before. A case change is a `REGRESSION` (passed to failed or error, or a case that no longer completes), a `FIX`, a `SCORE_DROP` or `SCORE_GAIN` beyond the tolerance, or `COVERAGE_LOST` and `COVERAGE_GAINED` (scored to skipped and back). One metric result gives at most one change, a status change wins over a score change. `maxCaseRegressions` (default 0) allows that many `REGRESSION` changes, every `SCORE_DROP` is a violation. `minPassRate` sets an absolute floor on the candidate for a metric.
+
+Tolerance is the allowed drop before something counts as a regression, with a small epsilon. Use 0.0 for the deterministic metrics. Use 0.25 for the judge metrics that score 1 to 5, because one rubric step is 0.25 and a single step of judge noise should not fail the build. Set it per metric with `withMetricTolerance`.
+
+A metric is `NOT_COMPARABLE` when its config values `metric.<name>.promptVersion`, `metric.<name>.judge` or `metric.<name>.repeats` differ between the two runs, and a key missing on one side counts as different. A different judge model, prompt or number of repeats changes what a score means, so comparing the two would measure the judge and not your system. A not comparable metric gets no regression verdict and no case changes, and fails the gate unless `failOnIncomparable` is false. Record a new baseline after changing the judge.
+
+Version 0.1 has no statistical significance test. It compares paired cases and relies on tolerances and on `repeats` to smooth judge noise. With a small dataset a small tolerance will flag noise, and a large tolerance can hide a real drop.

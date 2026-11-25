@@ -19,7 +19,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-final class StoreFixtures {
+public final class StoreFixtures {
 
     static final Instant T0 = Instant.parse("2026-01-02T03:04:05.678Z");
 
@@ -48,7 +48,7 @@ final class StoreFixtures {
         return new StoredRun(runId, "ds", "fp", "target", startedAt, startedAt.plusSeconds(1), Map.of(), List.of(cases));
     }
 
-    static EvalRun evalRunWithMarker(String marker) {
+    public static EvalRun evalRunWithMarker(String marker) {
         EvalTarget target = new EvalTarget() {
             @Override
             public String name() {

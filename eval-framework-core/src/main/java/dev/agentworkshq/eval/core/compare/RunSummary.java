@@ -12,11 +12,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-public record RunSummary(String runId, Map<CaseStatus, Integer> caseCounts, List<MetricAggregate> metrics) {
+public record RunSummary(
+        String runId,
+        String datasetName,
+        String targetName,
+        Map<CaseStatus, Integer> caseCounts,
+        List<MetricAggregate> metrics,
+        Map<String, String> config) {
 
     public RunSummary {
         caseCounts = Collections.unmodifiableMap(new EnumMap<>(caseCounts));
         metrics = List.copyOf(metrics);
+        config = Collections.unmodifiableMap(new TreeMap<>(config));
     }
 
     public static RunSummary of(StoredRun run) {
@@ -27,7 +34,7 @@ public record RunSummary(String runId, Map<CaseStatus, Integer> caseCounts, List
         for (StoredCase c : run.cases()) {
             counts.merge(c.status(), 1, Integer::sum);
         }
-        return new RunSummary(run.runId(), counts, aggregates(run.cases()));
+        return new RunSummary(run.runId(), run.datasetName(), run.targetName(), counts, aggregates(run.cases()), run.config());
     }
 
     static List<MetricAggregate> aggregates(Collection<StoredCase> cases) {

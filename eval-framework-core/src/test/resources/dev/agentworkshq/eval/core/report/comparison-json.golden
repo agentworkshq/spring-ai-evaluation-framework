@@ -1,0 +1,185 @@
+{
+  "formatVersion": 1,
+  "baselineRunId": "base-1",
+  "candidateRunId": "cand-1",
+  "passesGate": false,
+  "datasetChanged": false,
+  "targetChanged": false,
+  "configChanges": [
+    {
+      "key": "metric.faith.promptVersion",
+      "baselineValue": "1",
+      "candidateValue": "2"
+    },
+    {
+      "key": "runner.concurrency",
+      "baselineValue": "1",
+      "candidateValue": "2"
+    }
+  ],
+  "onlyInBaseline": [],
+  "onlyInCandidate": [],
+  "metrics": [
+    {
+      "metricName": "cov",
+      "verdict": "UNCHANGED",
+      "tolerance": 0.0,
+      "baseline": {
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "meanScore": 0.9,
+        "passRate": 1.0
+      },
+      "candidate": {
+        "passed": 0,
+        "failed": 0,
+        "error": 0,
+        "skipped": 1,
+        "meanScore": null,
+        "passRate": null
+      }
+    },
+    {
+      "metricName": "faith",
+      "verdict": "NOT_COMPARABLE",
+      "tolerance": 0.0,
+      "baseline": {
+        "passed": 1,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "meanScore": 1.0,
+        "passRate": 1.0
+      },
+      "candidate": {
+        "passed": 0,
+        "failed": 1,
+        "error": 0,
+        "skipped": 0,
+        "meanScore": 0.2,
+        "passRate": 0.0
+      }
+    },
+    {
+      "metricName": "m_reg",
+      "verdict": "REGRESSED",
+      "tolerance": 0.0,
+      "baseline": {
+        "passed": 2,
+        "failed": 1,
+        "error": 0,
+        "skipped": 0,
+        "meanScore": 0.6666666666666666,
+        "passRate": 0.6666666666666666
+      },
+      "candidate": {
+        "passed": 1,
+        "failed": 1,
+        "error": 0,
+        "skipped": 0,
+        "meanScore": 0.5,
+        "passRate": 0.5
+      }
+    },
+    {
+      "metricName": "m_score",
+      "verdict": "REGRESSED",
+      "tolerance": 0.0,
+      "baseline": {
+        "passed": 2,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "meanScore": 0.9,
+        "passRate": 1.0
+      },
+      "candidate": {
+        "passed": 2,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "meanScore": 0.7,
+        "passRate": 1.0
+      }
+    },
+    {
+      "metricName": "only_skipped",
+      "verdict": "UNCHANGED",
+      "tolerance": 0.0,
+      "baseline": {
+        "passed": 0,
+        "failed": 0,
+        "error": 0,
+        "skipped": 1,
+        "meanScore": null,
+        "passRate": null
+      },
+      "candidate": {
+        "passed": 0,
+        "failed": 0,
+        "error": 0,
+        "skipped": 1,
+        "meanScore": null,
+        "passRate": null
+      }
+    }
+  ],
+  "caseChangeCount": 5,
+  "caseChanges": [
+    {
+      "caseId": "a",
+      "metricName": "cov",
+      "kind": "COVERAGE_LOST",
+      "baselineStatus": "PASSED",
+      "baselineScore": 0.9,
+      "candidateStatus": "SKIPPED",
+      "candidateScore": null
+    },
+    {
+      "caseId": "a",
+      "metricName": "m_reg",
+      "kind": "REGRESSION",
+      "baselineStatus": "PASSED",
+      "baselineScore": 1.0,
+      "candidateStatus": "FAILED",
+      "candidateScore": 0.0
+    },
+    {
+      "caseId": "b",
+      "metricName": "m_score",
+      "kind": "SCORE_DROP",
+      "baselineStatus": "PASSED",
+      "baselineScore": 0.9,
+      "candidateStatus": "PASSED",
+      "candidateScore": 0.5
+    },
+    {
+      "caseId": "c",
+      "metricName": "m_reg",
+      "kind": "FIX",
+      "baselineStatus": "FAILED",
+      "baselineScore": 0.0,
+      "candidateStatus": "PASSED",
+      "candidateScore": 1.0
+    },
+    {
+      "caseId": "d",
+      "metricName": null,
+      "kind": "REGRESSION",
+      "baselineStatus": "COMPLETED",
+      "baselineScore": null,
+      "candidateStatus": "TARGET_FAILED",
+      "candidateScore": null
+    }
+  ],
+  "violations": [
+    "case regressions: 2 (allowed 0)",
+    "metric m_reg regressed: mean 0.6667 to 0.5000, pass rate 0.6667 to 0.5000, errors 0 to 0, tolerance 0.0000",
+    "metric m_score regressed: mean 0.9000 to 0.7000, pass rate 1.0000 to 1.0000, errors 0 to 0, tolerance 0.0000",
+    "score drop: case b metric m_score 0.9000 to 0.5000",
+    "metric faith is not comparable, differs in promptVersion",
+    "coverage lost: case a metric cov"
+  ]
+}

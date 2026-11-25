@@ -22,7 +22,10 @@ public enum ErrorMessages {
     EVAL_E019(422, "Invalid run file: %s%s"),
     EVAL_E020(400, "Invalid run store location: %s"),
     EVAL_E021(413, "Too many runs in the store: %d (limit %d)"),
-    EVAL_E022(422, "Runs are not comparable: %s");
+    EVAL_E022(422, "Runs are not comparable: %s"),
+    EVAL_E023(500, "Run store IO failure during %s"),
+    EVAL_E024(400, "Invalid report output: %s"),
+    EVAL_E025(500, "Report could not be written: %s");
 
     private final int status;
     private final String message;

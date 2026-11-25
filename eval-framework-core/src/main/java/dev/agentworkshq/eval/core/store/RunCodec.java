@@ -105,7 +105,7 @@ final class RunCodec {
         try {
             json = mapper.writer().with(printer()).writeValueAsString(root) + "\n";
         } catch (JacksonException e) {
-            throw new ServiceException(ErrorMessages.EVAL_E001, e);
+            throw new ServiceException(ErrorMessages.EVAL_E023, e, "write");
         }
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         if (bytes.length > limits.maxFileBytes()) {

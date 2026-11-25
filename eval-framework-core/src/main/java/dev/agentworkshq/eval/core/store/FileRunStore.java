@@ -82,7 +82,7 @@ public final class FileRunStore implements RunStore {
         } catch (FileAlreadyExistsException e) {
             throw new ValidationException(ErrorMessages.EVAL_E018, e, run.runId());
         } catch (IOException e) {
-            throw new ServiceException(ErrorMessages.EVAL_E001, e);
+            throw new ServiceException(ErrorMessages.EVAL_E023, e, "save");
         } finally {
             deleteQuietly(temp);
         }
@@ -148,7 +148,7 @@ public final class FileRunStore implements RunStore {
                 }
             }
         } catch (IOException e) {
-            throw new ServiceException(ErrorMessages.EVAL_E001, e);
+            throw new ServiceException(ErrorMessages.EVAL_E023, e, "list");
         }
         if (files.size() > limits.maxRuns()) {
             throw new ValidationException(ErrorMessages.EVAL_E021, files.size(), limits.maxRuns());
@@ -165,7 +165,7 @@ public final class FileRunStore implements RunStore {
         } catch (NoSuchFileException e) {
             return null;
         } catch (IOException e) {
-            throw new ServiceException(ErrorMessages.EVAL_E001, e);
+            throw new ServiceException(ErrorMessages.EVAL_E023, e, "read");
         }
         if (!real.startsWith(root)) {
             throw new ValidationException(ErrorMessages.EVAL_E020, "run file leaves the store directory: " + name);
@@ -177,7 +177,7 @@ public final class FileRunStore implements RunStore {
         try (InputStream in = Files.newInputStream(real)) {
             bytes = in.readNBytes((int) Math.min((long) limits.maxFileBytes() + 1, Integer.MAX_VALUE));
         } catch (IOException e) {
-            throw new ServiceException(ErrorMessages.EVAL_E001, e);
+            throw new ServiceException(ErrorMessages.EVAL_E023, e, "read");
         }
         StoredRun run = codec.read(bytes, name);
         String idInName = name.substring(PREFIX.length(), name.length() - SUFFIX.length());

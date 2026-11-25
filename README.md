@@ -186,6 +186,8 @@ Labels and config values are free text copied from your `RunConfig`, they are li
 
 Files are never overwritten. `save` fails when the run id already exists, also on a case insensitive file system where two ids differ only by case. It writes a temporary file in the same directory, flushes it to disk and moves it into place without replacing anything. `list` is sorted by start time then run id and fails, naming the file, when one file is corrupt. `latest(datasetName, targetName)` returns the run that started last, ties go to the greater run id.
 
+Concurrency: one process is protected by a lock, so two threads saving the same run id never both succeed. Two separate processes saving the same run id at the same moment can overwrite each other on Linux, because the JDK checks for the file and then renames it. On Windows the move itself refuses to replace an existing file. In CI give every run a unique run id, for example with the build number.
+
 Baseline workflow:
 
 1. Run the evaluation and save it to an output directory outside `src`.
@@ -222,3 +224,52 @@ Tolerance is the allowed drop before something counts as a regression, with a sm
 A metric is `NOT_COMPARABLE` when its config values `metric.<name>.promptVersion`, `metric.<name>.judge` or `metric.<name>.repeats` differ between the two runs, and a key missing on one side counts as different. A different judge model, prompt or number of repeats changes what a score means, so comparing the two would measure the judge and not your system. A not comparable metric gets no regression verdict and no case changes, and fails the gate unless `failOnIncomparable` is false. Record a new baseline after changing the judge.
 
 Version 0.1 has no statistical significance test. It compares paired cases and relies on tolerances and on `repeats` to smooth judge noise. With a small dataset a small tolerance will flag noise, and a large tolerance can hide a real drop.
+
+## Reports
+
+Reports are pure functions that return strings. They take only a `StoredRun` based `RunSummary` and a `Comparison`, never an `EvalRun`, so no question, answer or chunk text can reach them.
+
+| Report | Content |
+| --- | --- |
+| `ConsoleReport.render(summary, comparison, options)` | Plain ASCII tables, no colors, LF line endings: run header, metric table (counts, mean score, pass rate and, with a comparison, baseline mean, delta and verdict), `GATE: PASSED` or `GATE: FAILED` with every violation, config changes and the case changes (regressions first, then score drops, fixes, gains, coverage) |
+| `MarkdownReport.render(summary, comparison, options)` | The same sections as GitHub tables, starting with the hidden marker `<!-- eval-framework-report -->` and a level 3 heading with the gate result |
+| `ComparisonJson.render(comparison, options)` | A JSON document for CI artifacts with `formatVersion` 1, verdicts, aggregates, case changes, violations and the gate result |
+
+The comparison can be `null`, then the report has only the run header and the metric table. `ReportOptions` has `maxCaseRows` (50, 1 to 500, the JSON lists at most that many case changes and also gives the total), `maxChars` (60000, 1000 to 65000, Markdown only), `includeRunConfig` (false) and `maxFieldChars` (80, 10 to 200). The Markdown text is cut at a line boundary, never inside a table row, and ends with a line saying how many characters were left out.
+
+```java
+StoredRun baseline = new FileRunStore(Path.of("src/test/resources/eval-baselines"), StoreLimits.defaults())
+        .load("support-bot-baseline");
+StoredRun candidate = StoredRun.from(run);
+Comparison comparison = RunComparator.compare(baseline, candidate, ComparisonConfig.defaults());
+String markdown = MarkdownReport.render(RunSummary.of(candidate), comparison, ReportOptions.defaults());
+new ReportWriter(Path.of("target/eval-reports")).write("eval-report.md", markdown);
+```
+
+`ReportWriter` creates the directory, accepts file names that match `[A-Za-z0-9][A-Za-z0-9._-]{0,99}` and end in `.md`, `.txt` or `.json`, rejects symbolic links that leave the directory, and replaces an existing report because reports are regenerated.
+
+A CI step can post the Markdown file as a pull request comment with the GitHub CLI. The hidden marker lets it update its earlier comment instead of adding a new one. This is a documentation snippet, the library ships no workflow file:
+
+```yaml
+- name: Comment on the pull request
+  env:
+    GH_TOKEN: ${{ github.token }}
+  run: |
+    id=$(gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments \
+      --jq ".[] | select(.body | startswith(\"<!-- eval-framework-report -->\")) | .id" | head -n 1)
+    if [ -n "$id" ]; then
+      gh api --method PATCH repos/${{ github.repository }}/issues/comments/$id -F body=@target/eval-reports/eval-report.md
+    else
+      gh pr comment ${{ github.event.pull_request.number }} --body-file target/eval-reports/eval-report.md
+    fi
+```
+
+Safety rules:
+
+- Reports never contain questions, answers or chunk text.
+- In Markdown every dynamic value (run ids, dataset and target names, case ids, metric names, config keys and values, violations) is shown inside a code span. The fence is longer than any backtick run in the text and a pipe in a table cell is escaped.
+- Control characters, line and paragraph separators, bidirectional controls and zero width characters are replaced by a space in every report, and every field is cut at `maxFieldChars`.
+- The Markdown has no images, links or mentions. The only raw HTML is the marker comment and the static `<details>` and `<summary>` tags.
+- The Markdown size is capped at `maxChars`.
+
+**Warning: labels and config values are free text from the caller. They appear in reports when `includeRunConfig` is true and in the config changes table. Never put secrets in them.**

@@ -1,0 +1,58 @@
+<!-- eval-framework-report -->
+### Evaluation gate: FAILED
+
+| Field | Value |
+| --- | --- |
+| Run | `cand-1` |
+| Dataset | `ds` |
+| Target | `target-a` |
+| Baseline | `base-1` |
+| Cases | COMPLETED=3, TARGET_FAILED=1, TIMED_OUT=0, SKIPPED_BUDGET=0 |
+
+#### Metrics
+
+| Metric | Passed | Failed | Error | Skipped | Mean | Pass rate | Baseline mean | Delta | Verdict |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `cov` | 0 | 0 | 0 | 1 | n/a | n/a | 0.900 | n/a | UNCHANGED |
+| `faith` | 0 | 1 | 0 | 0 | 0.200 | 0.0% | 1.000 | -0.800 | NOT_COMPARABLE |
+| `m_reg` | 1 | 1 | 0 | 0 | 0.500 | 50.0% | 0.667 | -0.167 | REGRESSED |
+| `m_score` | 2 | 0 | 0 | 0 | 0.700 | 100.0% | 0.900 | -0.200 | REGRESSED |
+| `only_skipped` | 0 | 0 | 0 | 1 | n/a | n/a | n/a | n/a | UNCHANGED |
+
+#### Violations
+
+- `case regressions: 2 (allowed 0)`
+- `metric m_reg regressed: mean 0.6667 to 0.5000, pass rate 0.6667 to 0.5000, errors 0 to 0, tolerance 0.0000`
+- `metric m_score regressed: mean 0.9000 to 0.7000, pass rate 1.0000 to 1.0000, errors 0 to 0, tolerance 0.0000`
+- `score drop: case b metric m_score 0.9000 to 0.5000`
+- `metric faith is not comparable, differs in promptVersion`
+- `coverage lost: case a metric cov`
+
+#### Config changes
+
+| Key | Baseline | Candidate |
+| --- | --- | --- |
+| `metric.faith.promptVersion` | `1` | `2` |
+| `runner.concurrency` | `1` | `2` |
+
+#### Case changes
+
+| Case | Metric | Change | Baseline | Candidate |
+| --- | --- | --- | --- | --- |
+| `a` | `m_reg` | REGRESSION | PASSED 1.000 | FAILED 0.000 |
+| `d` | (case) | REGRESSION | COMPLETED | TARGET_FAILED |
+| `b` | `m_score` | SCORE_DROP | PASSED 0.900 | PASSED 0.500 |
+| `c` | `m_reg` | FIX | FAILED 0.000 | PASSED 1.000 |
+| `a` | `cov` | COVERAGE_LOST | PASSED 0.900 | SKIPPED |
+
+<details>
+<summary>Run config</summary>
+
+| Key | Value |
+| --- | --- |
+| `label.team` | `core` |
+| `metric.faith.judge` | `judge-a` |
+| `metric.faith.promptVersion` | `2` |
+| `runner.concurrency` | `2` |
+
+</details>

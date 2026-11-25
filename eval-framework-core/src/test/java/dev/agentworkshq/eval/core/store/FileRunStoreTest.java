@@ -50,6 +50,18 @@ class FileRunStoreTest {
     }
 
     @Test
+    void ioFailuresUseTheStoreIoCode() throws IOException {
+        FileRunStore store = store();
+        Files.delete(dir.resolve("runs"));
+
+        assertThatThrownBy(store::list).isInstanceOf(BaseException.class)
+                .hasMessage("Run store IO failure during list")
+                .extracting(e -> codeOf(e)).isEqualTo(ErrorMessages.EVAL_E023);
+        assertThatThrownBy(() -> store.save(golden())).isInstanceOf(BaseException.class)
+                .extracting(e -> codeOf(e)).isEqualTo(ErrorMessages.EVAL_E023);
+    }
+
+    @Test
     void savesAndLoadsARun() {
         FileRunStore store = store();
 

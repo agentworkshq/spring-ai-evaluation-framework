@@ -1,0 +1,19 @@
+<!-- eval-framework-report -->
+### Evaluation results
+
+| Field | Value |
+| --- | --- |
+| Run | `cand-1` |
+| Dataset | `ds` |
+| Target | `target-a` |
+| Cases | COMPLETED=3, TARGET_FAILED=1, TIMED_OUT=0, SKIPPED_BUDGET=0 |
+
+#### Metrics
+
+| Metric | Passed | Failed | Error | Skipped | Mean | Pass rate |
+| --- | --- | --- | --- | --- | --- | --- |
+| `cov` | 0 | 0 | 0 | 1 | n/a | n/a |
+| `faith` | 0 | 1 | 0 | 0 | 0.200 | 0.0% |
+| `m_reg` | 1 | 1 | 0 | 0 | 0.500 | 50.0% |
+| `m_score` | 2 | 0 | 0 | 0 | 0.700 | 100.0% |
+| `only_skipped` | 0 | 0 | 0 | 1 | n/a | n/a |

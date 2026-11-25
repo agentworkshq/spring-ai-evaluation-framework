@@ -83,7 +83,7 @@ public final class RunComparator {
             caseChanges(baseCases.get(id), candCases.get(id), comparable, config, changes);
         }
 
-        List<String> violations = violations(config, metrics, changes, differing, candAgg);
+        List<String> violations = violations(config, metrics, changes, differing, candAgg, datasetChanged ? List.of() : onlyInBaseline);
         return new Comparison(baseline.runId(), candidate.runId(), datasetChanged,
                 !baseline.targetName().equals(candidate.targetName()), configChanges(baseline, candidate),
                 onlyInBaseline, onlyInCandidate, metrics, changes, violations);
@@ -159,7 +159,8 @@ public final class RunComparator {
             List<MetricComparison> metrics,
             List<CaseChange> changes,
             Map<String, List<String>> differing,
-            Map<String, MetricAggregate> candAgg) {
+            Map<String, MetricAggregate> candAgg,
+            List<String> missingCases) {
         List<String> out = new ArrayList<>();
         long regressions = changes.stream().filter(c -> c.kind() == ChangeKind.REGRESSION).count();
         if (regressions > config.maxCaseRegressions()) {
@@ -201,6 +202,12 @@ public final class RunComparator {
                 if (c.kind() == ChangeKind.COVERAGE_LOST) {
                     out.add("coverage lost: case " + c.caseId() + " metric " + c.metricName());
                 }
+            }
+            if (!missingCases.isEmpty()) {
+                int shown = Math.min(missingCases.size(), 10);
+                String more = missingCases.size() > shown ? " and " + (missingCases.size() - shown) + " more" : "";
+                out.add("coverage lost: " + missingCases.size() + " cases missing in the candidate: "
+                        + String.join(", ", missingCases.subList(0, shown)) + more);
             }
         }
         return out;

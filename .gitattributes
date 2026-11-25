@@ -2,3 +2,4 @@ mvnw text eol=lf
 *.sh text eol=lf
 *.cmd text eol=crlf
 *.json text eol=lf
+*.golden text eol=lf

@@ -295,6 +295,55 @@ class RunComparatorTest {
     }
 
     @Test
+    void casesMissingFromTheCandidateUnderAnEqualFingerprintAreLostCoverage() {
+        StoredRun base = run("base", done("a", pass("m", 1.0)), done("b", pass("m", 1.0)), done("c", pass("m", 1.0)));
+        StoredRun cand = run("cand", done("a", pass("m", 1.0)));
+
+        Comparison c = compare(base, cand);
+
+        assertThat(c.onlyInBaseline()).containsExactly("b", "c");
+        assertThat(c.passesGate()).isFalse();
+        assertThat(c.violations()).containsExactly("coverage lost: 2 cases missing in the candidate: b, c");
+        assertThat(RunComparator.compare(base, cand, DEFAULTS.withFailOnLostCoverage(false)).passesGate()).isTrue();
+    }
+
+    @Test
+    void casesOnlyInTheCandidateAreNotAViolation() {
+        StoredRun base = run("base", done("a", pass("m", 1.0)));
+        StoredRun cand = run("cand", done("a", pass("m", 1.0)), done("b", pass("m", 1.0)));
+
+        Comparison c = compare(base, cand);
+
+        assertThat(c.onlyInCandidate()).containsExactly("b");
+        assertThat(c.passesGate()).isTrue();
+    }
+
+    @Test
+    void theLostCoverageTextListsAtMostTenIds() {
+        StoredCase[] cases = new StoredCase[13];
+        for (int i = 0; i < cases.length; i++) {
+            cases[i] = done(String.format("c%02d", i), pass("m", 1.0));
+        }
+
+        Comparison c = compare(run("base", cases), run("cand"));
+
+        assertThat(c.violations()).hasSize(1);
+        assertThat(c.violations().get(0)).startsWith("coverage lost: 13 cases missing in the candidate: c00, c01")
+                .endsWith("c09 and 3 more");
+    }
+
+    @Test
+    void missingCasesAreNotAViolationWhenTheDatasetChangedAndIsAllowed() {
+        StoredRun base = runOf("base", "ds", "fp1", "t", done("a", pass("m", 1.0)), done("b", pass("m", 1.0)));
+        StoredRun cand = runOf("cand", "ds", "fp2", "t", done("a", pass("m", 1.0)));
+
+        Comparison c = RunComparator.compare(base, cand, DEFAULTS.withRequireSameDataset(false));
+
+        assertThat(c.onlyInBaseline()).containsExactly("b");
+        assertThat(c.passesGate()).isTrue();
+    }
+
+    @Test
     void aMinimumPassRateIsAnAbsoluteFloorOnTheCandidate() {
         StoredRun base = run("base", done("a", pass("m", 1.0)), done("b", pass("m", 1.0)));
         StoredRun cand = run("cand", done("a", pass("m", 1.0)), done("b", fail("m", 0.0)));

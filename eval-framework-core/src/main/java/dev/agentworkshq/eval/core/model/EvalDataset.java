@@ -30,6 +30,11 @@ public record EvalDataset(String name, List<EvalCase> cases) {
         }
     }
 
+    @Override
+    public String toString() {
+        return "EvalDataset[name=" + name + ", cases=" + cases.size() + "]";
+    }
+
     public String fingerprint() {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (DataOutputStream out = new DataOutputStream(bytes)) {

@@ -50,6 +50,36 @@ class FileRunStoreTest {
     }
 
     @Test
+    void readOnlyStoreNeverCreatesTheDirectoryAndRejectsSave() {
+        Path missing = dir.resolve("missing");
+
+        assertThatThrownBy(() -> FileRunStore.readOnly(missing, StoreLimits.defaults()))
+                .isInstanceOf(ValidationException.class)
+                .extracting(e -> codeOf(e)).isEqualTo(ErrorMessages.EVAL_E020);
+
+        assertThat(missing).doesNotExist();
+    }
+
+    @Test
+    void readOnlyStoreLoadsAndListsButCannotSave() throws IOException {
+        store().save(run("r1", T0, completed("a")));
+        FileRunStore readOnly = FileRunStore.readOnly(dir.resolve("runs"), StoreLimits.defaults());
+
+        assertThat(readOnly.load("r1").runId()).isEqualTo("r1");
+        assertThat(readOnly.list()).hasSize(1);
+        assertThatThrownBy(() -> readOnly.save(run("r2", T0, completed("a")))).isInstanceOf(ValidationException.class)
+                .hasMessageContaining("read-only");
+        assertThat(names(dir.resolve("runs"))).containsExactly("run-r1.json");
+    }
+
+    @Test
+    void readOnlyStoreRejectsARegularFileRoot() throws IOException {
+        Path file = Files.writeString(dir.resolve("file.txt"), "x");
+
+        assertThatThrownBy(() -> FileRunStore.readOnly(file, StoreLimits.defaults())).isInstanceOf(ValidationException.class);
+    }
+
+    @Test
     void ioFailuresUseTheStoreIoCode() throws IOException {
         FileRunStore store = store();
         Files.delete(dir.resolve("runs"));

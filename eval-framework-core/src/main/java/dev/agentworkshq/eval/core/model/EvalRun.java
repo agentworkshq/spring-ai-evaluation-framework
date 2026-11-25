@@ -40,6 +40,12 @@ public record EvalRun(
         caseResults = caseResults.stream().sorted(Comparator.comparing(CaseResult::caseId)).toList();
     }
 
+    @Override
+    public String toString() {
+        return "EvalRun[runId=" + runId + ", datasetName=" + datasetName + ", cases=" + caseResults.size()
+                + ", startedAt=" + startedAt + ", finishedAt=" + finishedAt + "]";
+    }
+
     public static void requireSafeConfigKey(String key) {
         if (looksLikeSecret(key)) {
             throw new ValidationException(ErrorMessages.EVAL_E011,

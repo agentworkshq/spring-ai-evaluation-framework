@@ -33,7 +33,11 @@ record ReportModel(
 
     private static final String MISSING = "(missing)";
 
-    static ReportModel build(RunSummary summary, Comparison comparison, ReportOptions options, Dyn dyn) {
+    static ReportModel build(
+            RunSummary summary, Comparison comparison, List<String> gateViolations, ReportOptions options, Dyn dyn) {
+        List<String> finalViolations = gateViolations != null
+                ? gateViolations
+                : comparison != null ? comparison.violations() : null;
         int max = options.maxFieldChars();
         List<List<String>> runRows = new ArrayList<>();
         runRows.add(List.of("Run", dyn.value(summary.runId(), max, true)));
@@ -41,6 +45,8 @@ record ReportModel(
         runRows.add(List.of("Target", dyn.value(summary.targetName(), max, true)));
         if (comparison != null) {
             runRows.add(List.of("Baseline", dyn.value(comparison.baselineRunId(), max, true)));
+        } else if (finalViolations != null) {
+            runRows.add(List.of("Baseline", "no baseline"));
         }
         List<String> counts = new ArrayList<>();
         for (CaseStatus status : CaseStatus.values()) {
@@ -56,11 +62,13 @@ record ReportModel(
         Table configChanges = null;
         Table caseChanges = null;
         int more = 0;
-        if (comparison != null) {
-            gate = comparison.passesGate();
-            for (String v : comparison.violations()) {
+        if (finalViolations != null) {
+            gate = finalViolations.isEmpty();
+            for (String v : finalViolations) {
                 violations.add(dyn.value(v, Format.VIOLATION_CHARS, false));
             }
+        }
+        if (comparison != null) {
             if (comparison.datasetChanged()) {
                 notes.add("Dataset content changed.");
             }

@@ -14,4 +14,9 @@ public record RetrievedChunk(String id, String documentId, String source, Intege
             throw Checks.bad("field 'score' must be a finite number");
         }
     }
+
+    @Override
+    public String toString() {
+        return "RetrievedChunk[textLength=" + text.length() + ", hasScore=" + (score != null) + "]";
+    }
 }

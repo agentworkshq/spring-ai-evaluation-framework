@@ -35,4 +35,10 @@ public record CaseResult(
             throw Checks.bad("field 'duration' must not be null or negative");
         }
     }
+
+    @Override
+    public String toString() {
+        return "CaseResult[caseId=" + caseId + ", status=" + status + ", hasOutput=" + (output != null)
+                + ", metricResults=" + metricResults.size() + ", duration=" + duration + "]";
+    }
 }

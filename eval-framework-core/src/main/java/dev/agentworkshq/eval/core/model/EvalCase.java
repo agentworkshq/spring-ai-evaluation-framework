@@ -39,6 +39,12 @@ public record EvalCase(
         }
     }
 
+    @Override
+    public String toString() {
+        return "EvalCase[id=" + id + ", expectedSources=" + expectedSources.size() + ", tags=" + tags.size()
+                + ", expectNoAnswer=" + expectNoAnswer + "]";
+    }
+
     private static List<String> phrases(List<String> values, String field) {
         List<String> list = Checks.list(values, field, 20);
         if (list.stream().anyMatch(String::isBlank)) {

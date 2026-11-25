@@ -14,6 +14,109 @@ Planned Maven coordinates:
 
 Artifacts are not on Maven Central yet.
 
+## Quick start
+
+Add the starter and, for tests, the JUnit module:
+
+```xml
+<dependency>
+    <groupId>dev.agentworkshq</groupId>
+    <artifactId>eval-framework-spring-boot-starter</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <scope>test</scope>
+</dependency>
+<dependency>
+    <groupId>dev.agentworkshq</groupId>
+    <artifactId>eval-framework-junit</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <scope>test</scope>
+</dependency>
+```
+
+Properties with their defaults. Relative paths are resolved against the working directory. None of the directories is created when the application starts.
+
+```yaml
+eval-framework:
+  enabled: true
+  dataset:
+    root: src/test/resources/eval-datasets
+    max-file-bytes: 5242880
+    max-cases: 1000
+  baseline:
+    dir: src/test/resources/eval-baselines
+  store:
+    enabled: true
+    dir: target/eval-runs
+  report:
+    enabled: true
+    dir: target/eval-reports
+  runner:
+    concurrency: 1
+    per-case-timeout: 60s
+    per-metric-timeout: 60s
+    total-timeout: 30m
+    max-attempts: 1
+    max-cases: 1000
+    max-judge-calls: 500
+  judge:
+    identifier:   # optional, creates a JudgeModel bean
+```
+
+A complete test with a fake target and deterministic metrics. The dataset file is `src/test/resources/eval-datasets/support.yaml`:
+
+```java
+@SpringBootTest
+class SupportBotEvalTest {
+
+    @Autowired
+    EvalSuite suite;
+
+    @Autowired
+    EvalFrameworkProperties properties;
+
+    @Test
+    void supportBotMeetsTheGate() {
+        EvalTarget target = new EvalTarget() {
+            public String name() {
+                return "support-bot";
+            }
+
+            public TargetOutput run(EvalCase evalCase) {
+                return new TargetOutput("Reset it under Settings.", true, List.of(), List.of(), Duration.ZERO, Map.of());
+            }
+        };
+        EvalRequest request = EvalRequest.defaults()
+                .withRunConfig(properties.runner().toRunConfig().withRunId("support-" + System.getenv("BUILD_NUMBER")))
+                .withThresholds(Thresholds.defaults().withMinPassRate("answer_contains", 1.0));
+
+        EvalOutcome outcome = suite.evaluate("support.yaml", target,
+                List.of(new AnswerContainsMetric(), new LatencyMetric(Duration.ofSeconds(2))), request);
+
+        EvalAssertions.assertGate(outcome);
+    }
+}
+```
+
+`EvalSuite.evaluate` loads the dataset, runs it, saves the run file, compares it with the baseline when the request has a `baselineRunId`, checks the thresholds and renders the reports. The gate fails when there is any violation. An exhausted judge budget is a metric error and fails the gate on purpose (`maxMetricErrors` is 0 by default). A threshold on a metric that has no pass rate or mean (all skipped, or absent) is a violation, never a silent pass.
+
+`Thresholds`: `minPassRate` and `minMeanScore` per metric name (0 to 1), `maxIncompleteCases` (cases that are `TARGET_FAILED`, `TIMED_OUT` or `SKIPPED_BUDGET`, default 0) and `maxMetricErrors` (default 0).
+
+`EvalAssertions.assertGate(outcome)` throws an `AssertionFailedError` whose message is the console report, cut at 20000 characters. `EvalAssertions.assertThat(outcome)` gives `passesGate()`, `metricPassRateAtLeast`, `metricMeanScoreAtLeast`, `noCaseRegressions()`, `noMetricErrors()` and `allCasesCompleted()`. Their messages contain only ids, metric names and numbers.
+
+Files written by the suite, with `<id>` the run id: the run file `run-<id>.json` in the store directory, and `eval-report-<id>.md` and `eval-report-<id>.json` in the report directory. The run id part is cut so that the file name has at most 100 characters. The JSON report is only written when there is a baseline comparison.
+
+Baseline workflow:
+
+1. Run the suite once with a fixed run id.
+2. Copy `target/eval-runs/run-<id>.json` to `src/test/resources/eval-baselines/` and commit it.
+3. Set `baselineRunId` in the request: `request.withBaselineRunId("support-baseline")`.
+
+The baseline directory is opened read-only: a missing directory or file is an error and a run never creates the folder. In CI use a unique run id for every run, because a run id that already exists is never overwritten.
+
+The judge bean (`eval-framework.judge.identifier`) uses the application's default `ChatClient.Builder`. The context starts without one, and the first judge call then fails with a clear error. To use a different judge model than the one your application uses, define your own `JudgeModel` bean, it replaces the auto-configured one.
+
+Run files and reports go under `target/` by default so they are not committed. The question, answer and chunk text are never written to them. Datasets with real data must not be committed: a dataset file contains your questions and expected answers in plain text.
+
 ## Datasets
 
 A dataset is a file inside a configured dataset directory. Three formats are supported.

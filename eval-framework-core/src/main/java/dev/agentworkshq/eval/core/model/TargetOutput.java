@@ -23,4 +23,10 @@ public record TargetOutput(
         }
         attributes = Checks.sortedMap(attributes, "attributes", Integer.MAX_VALUE);
     }
+
+    @Override
+    public String toString() {
+        return "TargetOutput[answerLength=" + answer.length() + ", answered=" + answered + ", retrieved="
+                + retrieved.size() + ", citedSources=" + citedSources.size() + ", latency=" + latency + "]";
+    }
 }

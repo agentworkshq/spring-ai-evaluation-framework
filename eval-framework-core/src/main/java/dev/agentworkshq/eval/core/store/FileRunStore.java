@@ -36,15 +36,28 @@ public final class FileRunStore implements RunStore {
     private final Path root;
     private final StoreLimits limits;
     private final RunCodec codec;
+    private final boolean readOnly;
     private final ReentrantLock saveLock = new ReentrantLock();
 
     public FileRunStore(Path root, StoreLimits limits) {
+        this(root, limits, false);
+    }
+
+    public static FileRunStore readOnly(Path root, StoreLimits limits) {
+        return new FileRunStore(root, limits, true);
+    }
+
+    private FileRunStore(Path root, StoreLimits limits, boolean readOnly) {
         Objects.requireNonNull(root, "root");
         this.limits = Objects.requireNonNull(limits, "limits");
+        this.readOnly = readOnly;
         this.codec = new RunCodec(limits);
         try {
             if (Files.exists(root) && !Files.isDirectory(root)) {
                 throw new ValidationException(ErrorMessages.EVAL_E020, "not a directory");
+            }
+            if (readOnly && !Files.isDirectory(root)) {
+                throw new ValidationException(ErrorMessages.EVAL_E020, "the directory does not exist");
             }
             Files.createDirectories(root);
             this.root = root.toRealPath();
@@ -56,6 +69,9 @@ public final class FileRunStore implements RunStore {
     @Override
     public void save(StoredRun run) {
         Objects.requireNonNull(run, "run");
+        if (readOnly) {
+            throw new ValidationException(ErrorMessages.EVAL_E020, "the store is read-only");
+        }
         run.config().keySet().forEach(EvalRun::requireSafeConfigKey);
         byte[] bytes = codec.write(run);
         Path target = pathFor(run.runId());

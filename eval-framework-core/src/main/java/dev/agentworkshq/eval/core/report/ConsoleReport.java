@@ -11,9 +11,14 @@ public final class ConsoleReport {
     }
 
     public static String render(RunSummary summary, Comparison comparison, ReportOptions options) {
+        return render(summary, comparison, null, options);
+    }
+
+    public static String render(
+            RunSummary summary, Comparison comparison, List<String> gateViolations, ReportOptions options) {
         Objects.requireNonNull(summary, "summary");
         Objects.requireNonNull(options, "options");
-        ReportModel model = ReportModel.build(summary, comparison, options, (text, max, inTable) -> Sanitizer.plain(text, max));
+        ReportModel model = ReportModel.build(summary, comparison, gateViolations, options, (text, max, inTable) -> Sanitizer.plain(text, max));
         StringBuilder out = new StringBuilder();
         for (List<String> row : model.runRows()) {
             out.append(String.format("%-10s", row.get(0) + ":")).append(row.get(1)).append('\n');
@@ -31,14 +36,16 @@ public final class ConsoleReport {
                 section(out, "Config changes");
                 table(out, model.configChanges());
             }
-            section(out, "Case changes");
-            if (model.caseChanges().rows().isEmpty()) {
-                out.append("none\n");
-            } else {
-                table(out, model.caseChanges());
-            }
-            if (model.moreCaseChanges() > 0) {
-                out.append("... and ").append(model.moreCaseChanges()).append(" more\n");
+            if (model.caseChanges() != null) {
+                section(out, "Case changes");
+                if (model.caseChanges().rows().isEmpty()) {
+                    out.append("none\n");
+                } else {
+                    table(out, model.caseChanges());
+                }
+                if (model.moreCaseChanges() > 0) {
+                    out.append("... and ").append(model.moreCaseChanges()).append(" more\n");
+                }
             }
         }
         if (model.runConfig() != null) {

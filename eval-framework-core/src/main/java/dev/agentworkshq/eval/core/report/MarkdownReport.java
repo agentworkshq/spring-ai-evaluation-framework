@@ -14,9 +14,14 @@ public final class MarkdownReport {
     }
 
     public static String render(RunSummary summary, Comparison comparison, ReportOptions options) {
+        return render(summary, comparison, null, options);
+    }
+
+    public static String render(
+            RunSummary summary, Comparison comparison, List<String> gateViolations, ReportOptions options) {
         Objects.requireNonNull(summary, "summary");
         Objects.requireNonNull(options, "options");
-        ReportModel model = ReportModel.build(summary, comparison, options, MarkdownReport::dynamic);
+        ReportModel model = ReportModel.build(summary, comparison, gateViolations, options, MarkdownReport::dynamic);
         List<String> lines = new ArrayList<>();
         lines.add(MARKER);
         if (model.gatePassed() == null) {
@@ -44,15 +49,17 @@ public final class MarkdownReport {
                 heading(lines, "Config changes");
                 table(lines, model.configChanges());
             }
-            heading(lines, "Case changes");
-            if (model.caseChanges().rows().isEmpty()) {
-                lines.add("No case changes.");
-            } else {
-                table(lines, model.caseChanges());
-            }
-            if (model.moreCaseChanges() > 0) {
-                lines.add("");
-                lines.add("... and " + model.moreCaseChanges() + " more");
+            if (model.caseChanges() != null) {
+                heading(lines, "Case changes");
+                if (model.caseChanges().rows().isEmpty()) {
+                    lines.add("No case changes.");
+                } else {
+                    table(lines, model.caseChanges());
+                }
+                if (model.moreCaseChanges() > 0) {
+                    lines.add("");
+                    lines.add("... and " + model.moreCaseChanges() + " more");
+                }
             }
         }
         if (model.runConfig() != null) {

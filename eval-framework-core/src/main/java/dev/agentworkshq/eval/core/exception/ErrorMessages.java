@@ -25,7 +25,10 @@ public enum ErrorMessages {
     EVAL_E022(422, "Runs are not comparable: %s"),
     EVAL_E023(500, "Run store IO failure during %s"),
     EVAL_E024(400, "Invalid report output: %s"),
-    EVAL_E025(500, "Report could not be written: %s");
+    EVAL_E025(500, "Report could not be written: %s"),
+    EVAL_E026(404, "Baseline run not found: %s"),
+    EVAL_E027(404, "Baseline directory not found: %s"),
+    EVAL_E028(400, "Evaluation suite is misconfigured: %s");
 
     private final int status;
     private final String message;

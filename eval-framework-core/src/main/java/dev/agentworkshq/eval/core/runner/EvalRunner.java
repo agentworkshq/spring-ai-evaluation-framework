@@ -12,6 +12,7 @@ import dev.agentworkshq.eval.core.model.EvalCase;
 import dev.agentworkshq.eval.core.model.EvalDataset;
 import dev.agentworkshq.eval.core.model.EvalRun;
 import dev.agentworkshq.eval.core.model.MetricResult;
+import dev.agentworkshq.eval.core.model.NameRules;
 import dev.agentworkshq.eval.core.model.TargetOutput;
 import dev.agentworkshq.eval.core.model.Text;
 import dev.agentworkshq.eval.core.target.EvalTarget;
@@ -135,8 +136,8 @@ public final class EvalRunner {
     private static List<Metric> checkedMetrics(List<Metric> metrics) {
         List<Metric> list = new ArrayList<>();
         for (Metric metric : metrics) {
-            if (metric == null || metric.name() == null || metric.name().isBlank()) {
-                throw bad("metrics must not contain null entries or blank names");
+            if (metric == null || !NameRules.isValid(metric.name())) {
+                throw bad("metric at position " + (list.size() + 1) + " is null or has an invalid name");
             }
             list.add(metric);
         }

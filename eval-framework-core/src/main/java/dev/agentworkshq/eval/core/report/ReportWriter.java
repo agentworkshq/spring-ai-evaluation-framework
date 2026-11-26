@@ -69,7 +69,7 @@ public final class ReportWriter {
             log.debug("Wrote report {} with {} bytes", fileName, bytes.length);
             return target;
         } catch (IOException e) {
-            throw new ServiceException(ErrorMessages.EVAL_E025, e, Echo.safe(fileName));
+            throw new ServiceException(ErrorMessages.EVAL_E025, e, Echo.path(fileName));
         } finally {
             if (temp != null) {
                 try {

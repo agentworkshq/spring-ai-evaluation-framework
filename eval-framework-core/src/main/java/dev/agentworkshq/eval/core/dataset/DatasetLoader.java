@@ -109,7 +109,7 @@ public final class DatasetLoader {
     }
 
     public EvalDataset load(String relativePath) {
-        String label = Echo.safe(relativePath);
+        String label = Echo.path(relativePath);
         Path relative = checkRelative(relativePath, label);
         String fileName = relative.getFileName().toString();
         DatasetFormat format = DatasetFormat.fromFileName(fileName);

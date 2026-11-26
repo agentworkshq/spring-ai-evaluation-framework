@@ -2,6 +2,7 @@ package dev.agentworkshq.eval.core.compare;
 
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ValidationException;
+import dev.agentworkshq.eval.core.model.NameRules;
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;
@@ -81,13 +82,22 @@ public record ComparisonConfig(
         if (values == null) {
             return Map.of();
         }
-        for (Map.Entry<String, Double> e : values.entrySet()) {
-            if (e.getKey() == null || e.getKey().isBlank() || e.getValue() == null) {
-                throw bad(field + " must not contain blank names or null values");
+        if (values.keySet().stream().anyMatch(k -> k == null)) {
+            throw bad(field + " must not contain null names");
+        }
+        Map<String, Double> sorted = new TreeMap<>(values);
+        int position = 0;
+        for (Map.Entry<String, Double> e : sorted.entrySet()) {
+            position++;
+            if (!NameRules.isValid(e.getKey())) {
+                throw bad(field + " has an invalid metric name at position " + position);
+            }
+            if (e.getValue() == null) {
+                throw bad(field + " must not contain null values");
             }
             fraction(e.getValue(), field);
         }
-        return Collections.unmodifiableMap(new TreeMap<>(values));
+        return Collections.unmodifiableMap(sorted);
     }
 
     private static ValidationException bad(String detail) {

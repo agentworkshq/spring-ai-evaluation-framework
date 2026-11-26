@@ -46,8 +46,40 @@ class EchoTest {
         assertThatThrownBy(() -> loader.load("../" + HOSTILE + ".yaml"))
                 .hasMessageContaining("../" + CLEANED)
                 .message().doesNotContain("\n", "\u001b", "‮");
-        assertThatThrownBy(() -> loader.load("../" + "x".repeat(5000) + ".yaml"))
-                .message().hasSizeLessThan(200).contains("...");
+        assertThatThrownBy(() -> loader.load("../" + "x".repeat(5000) + "end.yaml"))
+                .message().hasSizeLessThan(250).contains("...xxx").endsWith("end.yaml");
+    }
+
+    @Test
+    void keepsAShortPath() {
+        assertThat(Echo.path("datasets/support.yaml")).isEqualTo("datasets/support.yaml");
+        assertThat(Echo.path("x".repeat(200))).isEqualTo("x".repeat(200));
+    }
+
+    @Test
+    void keepsTheEndOfALongPath() {
+        String path = "/root/" + "d".repeat(476) + "/support-file.yaml";
+
+        assertThat(path).hasSize(500);
+        assertThat(Echo.path(path)).hasSize(200).isEqualTo("..." + path.substring(path.length() - 197))
+                .endsWith("/support-file.yaml");
+    }
+
+    @Test
+    void doesNotSplitASurrogatePairInAPath() {
+        String path = "a".repeat(10) + "\uD83D\uDE00" + "b".repeat(196);
+
+        assertThat(Echo.path(path)).isEqualTo("..." + "b".repeat(196));
+    }
+
+    @Test
+    void cleansControlAndBidiCharactersInAPath() {
+        assertThat(Echo.path(HOSTILE)).isEqualTo(CLEANED);
+    }
+
+    @Test
+    void usesAPlaceholderForANullPath() {
+        assertThat(Echo.path(null)).isEqualTo("(null)");
     }
 
     @Test

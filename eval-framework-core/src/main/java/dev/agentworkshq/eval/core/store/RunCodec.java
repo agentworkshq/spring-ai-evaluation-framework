@@ -149,7 +149,7 @@ final class RunCodec {
             if (e.getErrorMessage() == ErrorMessages.EVAL_E019) {
                 throw e;
             }
-            throw new ValidationException(ErrorMessages.EVAL_E019, e, Echo.safe(file), ": " + e.getMessage());
+            throw new ValidationException(ErrorMessages.EVAL_E019, e, Echo.path(file), ": " + e.getMessage());
         }
     }
 
@@ -322,7 +322,7 @@ final class RunCodec {
     }
 
     private static ValidationException invalid(String file, String detail) {
-        return new ValidationException(ErrorMessages.EVAL_E019, Echo.safe(file), detail);
+        return new ValidationException(ErrorMessages.EVAL_E019, Echo.path(file), detail);
     }
 
     private static ValidationException malformed(String file, TokenStreamLocation location) {

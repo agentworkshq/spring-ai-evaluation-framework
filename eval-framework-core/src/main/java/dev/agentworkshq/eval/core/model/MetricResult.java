@@ -5,7 +5,7 @@ public record MetricResult(String metricName, MetricStatus status, Double score,
     private static final int MAX_REASON = 500;
 
     public MetricResult {
-        Checks.required(metricName, "metricName");
+        NameRules.require(metricName, "metricName");
         if (status == null) {
             throw Checks.bad("field 'status' must not be null");
         }

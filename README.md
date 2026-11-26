@@ -37,6 +37,7 @@ Add the starter and, for tests, the JUnit module:
 
 A complete test with a fake target and deterministic metrics. The dataset file is `src/test/resources/eval-datasets/support.yaml`:
 
+<!-- example: quickstart -->
 ```java
 @SpringBootTest
 class SupportBotEvalTest {
@@ -59,7 +60,7 @@ class SupportBotEvalTest {
             }
         };
         EvalRequest request = EvalRequest.defaults()
-                .withRunConfig(properties.runner().toRunConfig().withRunId("support-" + System.getenv("BUILD_NUMBER")))
+                .withRunConfig(properties.runner().toRunConfig())
                 .withThresholds(Thresholds.defaults().withMinPassRate("answer_contains", 1.0));
 
         EvalOutcome outcome = suite.evaluate("support.yaml", target,
@@ -128,6 +129,8 @@ Datasets can contain real data, see [Security and privacy](#security-and-privacy
 
 Every metric returns `PASSED`, `FAILED`, `ERROR` or `SKIPPED` with a score between 0 and 1 (no score for `ERROR` and `SKIPPED`) and a short reason. The reasons of the built-in metrics contain only ranks, counts, 1-based indexes, scores and exception class names. They never contain text from the dataset, the question, the answer or retrieved chunks.
 
+Metric names, including those of custom metrics and the keys of thresholds, tolerances and minimum pass rates, follow the same rule as dataset names, see [Datasets](#datasets).
+
 Source matching: entries are trimmed, backslashes become slashes and one leading `./` is dropped. An expected source matches a chunk when it equals the chunk's `source` or `documentId` exactly, case-sensitive. A chunk with neither is never relevant. Chunks keep the target's order as their rank, scores are never used to re-sort.
 
 Text matching for the contains metrics: Unicode NFKC, lowercase, runs of whitespace collapsed to one space, trimmed.
@@ -175,6 +178,7 @@ Hardening:
 
 Advice: use a judge model that differs from the target model, keep the temperature at 0 (`ChatClientJudgeModel` does), and raise `repeats` when scores look noisy. `perMetricTimeout` must be at least `repeats` times the judge latency, otherwise the metric ends as `ERROR` "metric timed out".
 
+<!-- example: judge -->
 ```java
 JudgeModel judge = new ChatClientJudgeModel(chatClientBuilder, "gpt-4o-mini");
 List<Metric> metrics = List.of(
@@ -460,7 +464,7 @@ Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 - Paths are confined. Datasets are read only from inside the dataset directory, the baseline directory is only read, and run files and reports are written only inside their configured directories. Symbolic links that leave a directory are rejected.
 - Limits apply to dataset files, case fields, run files, judge prompts and replies, regular expressions, reports, run time, cases per run and judge calls per run.
 - The `toString` methods of the library's records print validated ids, statuses, numbers and counts, never free text such as case text, reasons, labels or config values. Exceptions print their message.
-- Names, keys, ids and paths that an exception message or the model warning repeats have control and bidirectional characters removed and are cut to 64 characters.
+- Names, keys, ids and paths that an exception message or the model warning repeats have control and bidirectional characters removed and are cut to 64 characters. Paths are cut to 200 characters and keep their end, so that the file name stays visible.
 - Config keys that look like a credential and judge identifiers that look like a credential or a URL are rejected.
 - The library never calls `System.exit`.
 

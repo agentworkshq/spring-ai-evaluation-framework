@@ -135,7 +135,7 @@ public final class EvalSuite {
             throw new ValidationException(ErrorMessages.EVAL_E028, "a baselineRunId is set but no baseline directory is configured");
         }
         if (!Files.isDirectory(baselineDir)) {
-            throw new ResourceNotFoundException(ErrorMessages.EVAL_E027, Echo.safe(baselineDir.toString()));
+            throw new ResourceNotFoundException(ErrorMessages.EVAL_E027, Echo.path(baselineDir.toString()));
         }
         try {
             return FileRunStore.readOnly(baselineDir, limits).load(baselineRunId);

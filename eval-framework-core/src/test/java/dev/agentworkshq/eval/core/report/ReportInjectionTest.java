@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.agentworkshq.eval.core.compare.Comparison;
 import dev.agentworkshq.eval.core.compare.ComparisonConfig;
+import dev.agentworkshq.eval.core.compare.MetricComparison;
 import dev.agentworkshq.eval.core.compare.RunComparator;
 import dev.agentworkshq.eval.core.compare.RunSummary;
 import dev.agentworkshq.eval.core.model.MetricResult;
@@ -23,6 +24,7 @@ class ReportInjectionTest {
     private static final Set<String> ALLOWED_TAGS = Set.of("<details>", "</details>", "<summary>", "</summary>",
             MarkdownReport.MARKER);
     private static final Pattern TAG = Pattern.compile("<[^>]*>");
+    private static final String PLACEHOLDER = "placeholder_metric";
     private static final Pattern BAD_CHARS = Pattern.compile(
             "[\\p{Cc}&&[^\\n]]|[\\u202A-\\u202E\\u2066-\\u2069\\u200E\\u200F\\u200B-\\u200D\\u2060\\uFEFF\\u2028\\u2029]");
 
@@ -47,13 +49,24 @@ class ReportInjectionTest {
         return text.length() > 200 ? text.substring(0, 200) : text;
     }
 
-    private static Comparison compare(StoredRun base, StoredRun cand) {
-        return RunComparator.compare(base, cand, ComparisonConfig.defaults());
+    // stored runs reject such metric names, so they are put into the comparison records afterwards
+    private static Comparison compare(String text) {
+        Comparison c = RunComparator.compare(run("base", text, true), run("cand", text, false),
+                ComparisonConfig.defaults());
+        List<MetricComparison> metrics = c.metrics().stream()
+                .map(m -> m.metricName().equals(PLACEHOLDER)
+                        ? new MetricComparison(text, m.verdict(), m.tolerance(), m.baseline(), m.candidate())
+                        : m)
+                .toList();
+        List<String> violations = c.violations().stream().map(v -> v.replace(PLACEHOLDER, text)).toList();
+        assertThat(metrics).extracting(MetricComparison::metricName).contains(text);
+        return new Comparison(c.baselineRunId(), c.candidateRunId(), c.datasetChanged(), c.targetChanged(),
+                c.configChanges(), c.onlyInBaseline(), c.onlyInCandidate(), metrics, c.caseChanges(), violations);
     }
 
     private static StoredRun run(String id, String text, boolean withMetric) {
         MetricResult[] results = withMetric
-                ? new MetricResult[] {MetricResult.passed(text, 1.0, "ok"), MetricResult.passed("kept", 1.0, "ok")}
+                ? new MetricResult[] {MetricResult.passed(PLACEHOLDER, 1.0, "ok"), MetricResult.passed("kept", 1.0, "ok")}
                 : new MetricResult[] {MetricResult.passed("kept", 1.0, "ok")};
         return ReportFixtures.run(id, text, Map.of("label.note", id.equals("base") ? "plain" : config(text)),
                 List.of(ReportFixtures.done("a", results)));
@@ -102,7 +115,7 @@ class ReportInjectionTest {
     @ParameterizedTest
     @MethodSource("dangerous")
     void markdownKeepsDangerousTextInsideCodeSpans(String text, String token) {
-        Comparison c = compare(run("base", text, true), run("cand", text, false));
+        Comparison c = compare(text);
         StoredRun cand = run("cand", text, false);
 
         String markdown = MarkdownReport.render(RunSummary.of(cand), c, ReportOptions.defaults().withIncludeRunConfig(true));
@@ -124,7 +137,7 @@ class ReportInjectionTest {
     @ParameterizedTest
     @MethodSource("dangerous")
     void consoleHasNoControlCharactersAndIsCapped(String text, String token) {
-        Comparison c = compare(run("base", text, true), run("cand", text, false));
+        Comparison c = compare(text);
         StoredRun cand = run("cand", text, false);
 
         String console = ConsoleReport.render(RunSummary.of(cand), c, ReportOptions.defaults().withIncludeRunConfig(true));
@@ -137,7 +150,7 @@ class ReportInjectionTest {
     @ParameterizedTest
     @MethodSource("dangerous")
     void jsonReportHasNoControlCharacters(String text, String token) {
-        Comparison c = compare(run("base", text, true), run("cand", text, false));
+        Comparison c = compare(text);
 
         String json = ComparisonJson.render(c, ReportOptions.defaults());
 

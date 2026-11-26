@@ -1,0 +1,5 @@
+name: support
+cases:
+  - id: reset-1
+    question: How do I reset the device?
+    mustContain: [under Settings]

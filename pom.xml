@@ -87,6 +87,12 @@
             </dependency>
             <dependency>
                 <groupId>dev.agentworkshq</groupId>
+                <artifactId>eval-framework-core</artifactId>
+                <version>${project.version}</version>
+                <type>test-jar</type>
+            </dependency>
+            <dependency>
+                <groupId>dev.agentworkshq</groupId>
                 <artifactId>eval-framework-autoconfigure</artifactId>
                 <version>${project.version}</version>
             </dependency>

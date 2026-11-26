@@ -3,12 +3,29 @@ package dev.agentworkshq.eval.core.model;
 public final class Echo {
 
     private static final int MAX_ECHO = 64;
+    private static final int MAX_PATH = 200;
 
     private Echo() {
     }
 
     public static String safe(String text) {
         return text == null ? "(null)" : clean(text, MAX_ECHO);
+    }
+
+    // the end of a path is kept because it holds the file name
+    public static String path(String text) {
+        if (text == null) {
+            return "(null)";
+        }
+        String cleaned = clean(text, Integer.MAX_VALUE);
+        if (cleaned.length() <= MAX_PATH) {
+            return cleaned;
+        }
+        int from = cleaned.length() - (MAX_PATH - 3);
+        if (Character.isLowSurrogate(cleaned.charAt(from))) {
+            from++;
+        }
+        return "..." + cleaned.substring(from);
     }
 
     public static String clean(String text, int maxChars) {

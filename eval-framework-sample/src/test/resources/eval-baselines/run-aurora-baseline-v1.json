@@ -4,11 +4,11 @@
   "datasetName": "aurora-golden",
   "datasetFingerprint": "fa4a6aced1962e0ce2d66bc9c66c0374af243014886d09502dcf4baf02be5bb2",
   "targetName": "rag-engine",
-  "startedAt": "2026-11-26T09:52:08.508410100Z",
-  "finishedAt": "2026-11-26T09:52:08.629838400Z",
+  "startedAt": "2026-11-26T10:21:57.943079200Z",
+  "finishedAt": "2026-11-26T10:21:58.087047700Z",
   "config": {
     "dataset.caseCount": "15",
-    "library.version": "unknown",
+    "library.version": "0.1.0-SNAPSHOT",
     "metrics": "answer_contains,citation,citation_grounded,hit_at_3,latency,mrr_at_3,no_answer,recall_at_3",
     "runner.abandonedCalls": "0",
     "runner.concurrency": "1",
@@ -30,10 +30,10 @@
       "caseId": "firmware-01",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 71,
+      "durationMs": 74,
       "answered": true,
       "answerChars": 86,
-      "latencyMs": 39,
+      "latencyMs": 50,
       "retrievedCount": 1,
       "metricResults": [
         {
@@ -90,7 +90,7 @@
       "caseId": "out-of-scope-01",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 0,
+      "durationMs": 3,
       "answered": false,
       "answerChars": 54,
       "latencyMs": 2,
@@ -150,10 +150,10 @@
       "caseId": "out-of-scope-02",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 9,
+      "durationMs": 5,
       "answered": false,
       "answerChars": 54,
-      "latencyMs": 1,
+      "latencyMs": 2,
       "retrievedCount": 0,
       "metricResults": [
         {
@@ -213,7 +213,7 @@
       "durationMs": 2,
       "answered": false,
       "answerChars": 54,
-      "latencyMs": 1,
+      "latencyMs": 2,
       "retrievedCount": 0,
       "metricResults": [
         {
@@ -270,10 +270,10 @@
       "caseId": "out-of-scope-04",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 2,
+      "durationMs": 1,
       "answered": false,
       "answerChars": 54,
-      "latencyMs": 1,
+      "latencyMs": 2,
       "retrievedCount": 0,
       "metricResults": [
         {
@@ -330,7 +330,7 @@
       "caseId": "setup-01",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 3,
+      "durationMs": 4,
       "answered": true,
       "answerChars": 116,
       "latencyMs": 2,
@@ -390,10 +390,10 @@
       "caseId": "setup-02",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 3,
+      "durationMs": 4,
       "answered": true,
       "answerChars": 49,
-      "latencyMs": 2,
+      "latencyMs": 3,
       "retrievedCount": 1,
       "metricResults": [
         {
@@ -450,7 +450,7 @@
       "caseId": "setup-03",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 5,
+      "durationMs": 6,
       "answered": true,
       "answerChars": 81,
       "latencyMs": 4,
@@ -513,7 +513,7 @@
       "durationMs": 3,
       "answered": true,
       "answerChars": 126,
-      "latencyMs": 1,
+      "latencyMs": 2,
       "retrievedCount": 2,
       "metricResults": [
         {
@@ -573,7 +573,7 @@
       "durationMs": 2,
       "answered": true,
       "answerChars": 160,
-      "latencyMs": 2,
+      "latencyMs": 1,
       "retrievedCount": 2,
       "metricResults": [
         {
@@ -630,10 +630,10 @@
       "caseId": "troubleshooting-02",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 2,
+      "durationMs": 3,
       "answered": true,
       "answerChars": 84,
-      "latencyMs": 1,
+      "latencyMs": 2,
       "retrievedCount": 3,
       "metricResults": [
         {
@@ -693,7 +693,7 @@
       "durationMs": 4,
       "answered": true,
       "answerChars": 78,
-      "latencyMs": 2,
+      "latencyMs": 3,
       "retrievedCount": 2,
       "metricResults": [
         {
@@ -750,7 +750,7 @@
       "caseId": "warranty-01",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 1,
+      "durationMs": 3,
       "answered": true,
       "answerChars": 94,
       "latencyMs": 2,
@@ -810,10 +810,10 @@
       "caseId": "warranty-02",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 5,
+      "durationMs": 4,
       "answered": true,
       "answerChars": 118,
-      "latencyMs": 2,
+      "latencyMs": 3,
       "retrievedCount": 2,
       "metricResults": [
         {
@@ -870,10 +870,10 @@
       "caseId": "warranty-03",
       "status": "COMPLETED",
       "errorMessage": null,
-      "durationMs": 0,
+      "durationMs": 11,
       "answered": true,
       "answerChars": 98,
-      "latencyMs": 1,
+      "latencyMs": 4,
       "retrievedCount": 1,
       "metricResults": [
         {

@@ -11,6 +11,7 @@ import dev.agentworkshq.eval.core.exception.ResourceNotFoundException;
 import dev.agentworkshq.eval.core.exception.ValidationException;
 import dev.agentworkshq.eval.core.metric.Metric;
 import dev.agentworkshq.eval.core.model.CaseStatus;
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.model.EvalDataset;
 import dev.agentworkshq.eval.core.model.EvalRun;
 import dev.agentworkshq.eval.core.report.ComparisonJson;
@@ -23,9 +24,13 @@ import dev.agentworkshq.eval.core.store.RunStore;
 import dev.agentworkshq.eval.core.store.StoreLimits;
 import dev.agentworkshq.eval.core.store.StoredRun;
 import dev.agentworkshq.eval.core.target.EvalTarget;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,6 +45,7 @@ public final class EvalSuite {
     private static final String REPORT_PREFIX = "eval-report-";
     private static final int MAX_FILE_NAME = 100;
     private static final int MAX_ID_PART = MAX_FILE_NAME - REPORT_PREFIX.length() - ".json".length();
+    private static final int HASH_CHARS = 8;
     private static final double EPSILON = 1e-9;
 
     private final DatasetLoader loader;
@@ -64,6 +70,10 @@ public final class EvalSuite {
         StoredRun baseline = loadBaseline(request.baselineRunId());
 
         EvalDataset dataset = loader.load(datasetPath);
+        if (baseline != null) {
+            // checked before the run so that a mismatch costs no target or judge calls
+            RunComparator.requireSameDataset(baseline, dataset.name(), dataset.fingerprint(), request.comparison());
+        }
         EvalRun run = runner.run(dataset, target, metrics, request.runConfig());
         StoredRun stored = StoredRun.from(run);
         if (request.saveRun() && runStore != null) {
@@ -82,7 +92,7 @@ public final class EvalSuite {
         String markdown = MarkdownReport.render(summary, comparison, violations, request.reportOptions());
         List<String> files = new ArrayList<>();
         if (request.writeReports() && reportWriter != null) {
-            String idPart = run.runId().length() > MAX_ID_PART ? run.runId().substring(0, MAX_ID_PART) : run.runId();
+            String idPart = reportIdPart(run.runId());
             String markdownName = REPORT_PREFIX + idPart + ".md";
             reportWriter.write(markdownName, markdown);
             files.add(markdownName);
@@ -100,6 +110,23 @@ public final class EvalSuite {
         return outcome;
     }
 
+    private static String reportIdPart(String runId) {
+        if (runId.length() <= MAX_ID_PART) {
+            return runId;
+        }
+        String hash = "-" + sha256(runId).substring(0, HASH_CHARS);
+        return runId.substring(0, MAX_ID_PART - hash.length()) + hash;
+    }
+
+    private static String sha256(String text) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
+    }
+
     private StoredRun loadBaseline(String baselineRunId) {
         if (baselineRunId == null) {
             return null;
@@ -108,12 +135,12 @@ public final class EvalSuite {
             throw new ValidationException(ErrorMessages.EVAL_E028, "a baselineRunId is set but no baseline directory is configured");
         }
         if (!Files.isDirectory(baselineDir)) {
-            throw new ResourceNotFoundException(ErrorMessages.EVAL_E027, baselineDir.toString());
+            throw new ResourceNotFoundException(ErrorMessages.EVAL_E027, Echo.safe(baselineDir.toString()));
         }
         try {
             return FileRunStore.readOnly(baselineDir, limits).load(baselineRunId);
         } catch (ResourceNotFoundException e) {
-            throw new ResourceNotFoundException(ErrorMessages.EVAL_E026, e, baselineRunId);
+            throw new ResourceNotFoundException(ErrorMessages.EVAL_E026, e, Echo.safe(baselineRunId));
         }
     }
 
@@ -123,7 +150,7 @@ public final class EvalSuite {
         } catch (BaseException e) {
             if (e.getErrorMessage() == ErrorMessages.EVAL_E018) {
                 throw new ValidationException(ErrorMessages.EVAL_E018, e,
-                        stored.runId() + " (use a unique run id, for example one that contains the build number)");
+                        Echo.safe(stored.runId()) + " (use a unique run id, for example one that contains the build number)");
             }
             throw e;
         }

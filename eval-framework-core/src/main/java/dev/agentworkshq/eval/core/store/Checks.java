@@ -30,16 +30,4 @@ final class Checks {
             throw bad("field '" + field + "' is longer than " + max + " characters");
         }
     }
-
-    static String printable(String text, int max) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < text.length() && i < max; i++) {
-            char c = text.charAt(i);
-            sb.append(c < 0x20 || c == 0x7f ? '?' : c);
-        }
-        if (text.length() > max) {
-            sb.append("...");
-        }
-        return sb.toString();
-    }
 }

@@ -228,6 +228,33 @@ class DatasetLoaderTest {
         assertThat(e.getMessage()).contains("anchors and aliases");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "name: d\ncases:\n  - id: a\n    question: !!int 5\n",
+            "name: d\ncases:\n  - id: a\n    question: !!str hidden\n",
+            "name: d\ncases:\n  - id: a\n    question: !hidden text\n",
+            "name: d\ncases:\n  - id: a\n    question: !<tag:yaml.org,2002:str> hidden\n",
+            "name: d\ncases:\n  - id: a\n    question: ! hidden\n",
+            "name: d\ncases: !!seq\n  - id: a\n    question: q\n",
+            "name: d\ncases:\n  - !hidden\n    id: a\n    question: q\n",
+            "--- !!map\nname: d\ncases:\n  - id: a\n    question: q\n"})
+    void rejectsExplicitYamlTags(String content) throws IOException {
+        write("d.yaml", content);
+
+        BaseException e = thrown(() -> loader().load("d.yaml"));
+
+        assertThat(e.getErrorCode()).isEqualTo("EVAL_E007");
+        assertThat(e.getMessage()).matches(".*explicit tags are not allowed, line \\d+, column \\d+.*")
+                .doesNotContain("hidden", "!");
+    }
+
+    @Test
+    void exclamationMarksInsideStringsAreNotTags() throws IOException {
+        write("d.yaml", "name: d\ncases:\n  - id: a\n    question: \"!!int is just text!\"\n");
+
+        assertThat(loader().load("d.yaml").cases().getFirst().question()).isEqualTo("!!int is just text!");
+    }
+
     @Test
     void rejectsBillionLaughsQuickly() throws IOException {
         StringBuilder sb = new StringBuilder("a0: &a0 [x, x, x, x, x, x, x, x, x, x]\n");

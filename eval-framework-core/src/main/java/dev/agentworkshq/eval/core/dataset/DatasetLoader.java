@@ -1,5 +1,6 @@
 package dev.agentworkshq.eval.core.dataset;
 
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.exception.BaseException;
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ResourceNotFoundException;
@@ -32,8 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snakeyaml.engine.v2.api.LoadSettings;
 import org.snakeyaml.engine.v2.api.lowlevel.Parse;
+import org.snakeyaml.engine.v2.events.CollectionStartEvent;
 import org.snakeyaml.engine.v2.events.Event;
 import org.snakeyaml.engine.v2.events.NodeEvent;
+import org.snakeyaml.engine.v2.events.ScalarEvent;
 import org.snakeyaml.engine.v2.exceptions.YamlEngineException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadConstraints;
@@ -106,7 +109,7 @@ public final class DatasetLoader {
     }
 
     public EvalDataset load(String relativePath) {
-        String label = safe(relativePath, 200);
+        String label = Echo.safe(relativePath);
         Path relative = checkRelative(relativePath, label);
         String fileName = relative.getFileName().toString();
         DatasetFormat format = DatasetFormat.fromFileName(fileName);
@@ -137,7 +140,7 @@ public final class DatasetLoader {
         Objects.requireNonNull(datasetName, "datasetName");
         Objects.requireNonNull(format, "format");
         Objects.requireNonNull(content, "content");
-        String label = safe(datasetName, 64);
+        String label = Echo.safe(datasetName);
         if (content.length() > limits.maxFileBytes()) {
             throw new ValidationException(ErrorMessages.EVAL_E005, label, limits.maxFileBytes());
         }
@@ -156,21 +159,6 @@ public final class DatasetLoader {
             return new ResourceNotFoundException(ErrorMessages.EVAL_E002, e, label);
         }
         return new ServiceException(ErrorMessages.EVAL_E009, e, label);
-    }
-
-    static String safe(String text, int max) {
-        if (text == null) {
-            return "null";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < text.length() && i < max; i++) {
-            char c = text.charAt(i);
-            sb.append(c < 0x20 || c == 0x7f ? '?' : c);
-        }
-        if (text.length() > max) {
-            sb.append("...");
-        }
-        return sb.toString();
     }
 
     static byte[] readCapped(InputStream in, int cap, String label) throws IOException {
@@ -225,7 +213,7 @@ public final class DatasetLoader {
         JsonNode root;
         try {
             if (format == DatasetFormat.YAML) {
-                rejectAnchorsAndTooDeep(text, label);
+                rejectUnsafeYaml(text, label);
                 root = yamlMapper.readTree(text);
             } else {
                 root = jsonMapper.readTree(text);
@@ -267,13 +255,16 @@ public final class DatasetLoader {
         return new EvalDataset(name, result);
     }
 
-    private void rejectAnchorsAndTooDeep(String text, String label) {
+    private void rejectUnsafeYaml(String text, String label) {
         int depth = 0;
         try {
             for (Event event : new Parse(yamlSettings).parseString(text)) {
                 Event.ID id = event.getEventId();
                 if (event instanceof NodeEvent node && (id == Event.ID.Alias || node.getAnchor().isPresent())) {
                     throw malformed(label, null, markLine(event), markColumn(event), "anchors and aliases are not allowed");
+                }
+                if (hasExplicitTag(event)) {
+                    throw malformed(label, null, markLine(event), markColumn(event), "explicit tags are not allowed");
                 }
                 if ((id == Event.ID.MappingStart || id == Event.ID.SequenceStart) && ++depth > limits.maxNestingDepth()) {
                     throw malformed(label, null, markLine(event), markColumn(event), "nesting is too deep");
@@ -285,6 +276,11 @@ public final class DatasetLoader {
         } catch (YamlEngineException e) {
             // Syntax errors are reported by the Jackson pass with the same line and column.
         }
+    }
+
+    private static boolean hasExplicitTag(Event event) {
+        return event instanceof ScalarEvent scalar && scalar.getTag().isPresent()
+                || event instanceof CollectionStartEvent start && start.getTag().isPresent();
     }
 
     private static int markLine(Event event) {
@@ -360,7 +356,7 @@ public final class DatasetLoader {
             throw new ValidationException(ErrorMessages.EVAL_E008, e, label, where + ": " + detail);
         }
         if (!ids.add(id)) {
-            throw invalid(label, where, "field 'id' duplicates an earlier case: '" + id + "'");
+            throw invalid(label, where, "field 'id' duplicates an earlier case: '" + Echo.safe(id) + "'");
         }
         return evalCase;
     }
@@ -368,7 +364,7 @@ public final class DatasetLoader {
     private void rejectUnknown(JsonNode node, Set<String> allowed, String label, String where) {
         for (String field : node.propertyNames()) {
             if (!allowed.contains(field)) {
-                throw invalid(label, where, "unknown field '" + safe(field, 64) + "'");
+                throw invalid(label, where, "unknown field '" + Echo.safe(field) + "'");
             }
         }
     }

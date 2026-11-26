@@ -35,7 +35,7 @@ class JudgePromptBuilderTest {
         Section section = new Section("ANSWER", "SECRET-MARKER-TEXT", 100);
         Prompt prompt = fixed().build(List.of(section));
 
-        assertThat(section.toString()).doesNotContain("SECRET-MARKER-TEXT").contains("ANSWER", "textLength=18");
+        assertThat(section.toString()).doesNotContain("SECRET-MARKER-TEXT").contains("textLength=18").doesNotContain("ANSWER");
         assertThat(prompt.toString()).doesNotContain("SECRET-MARKER-TEXT")
                 .contains("length=" + prompt.userPrompt().length(), "truncated=false");
     }

@@ -20,7 +20,7 @@ public final class JudgePromptBuilder {
 
         @Override
         public String toString() {
-            return "Section[name=" + name + ", textLength=" + text.length() + ", maxChars=" + maxChars + "]";
+            return "Section[textLength=" + text.length() + ", maxChars=" + maxChars + "]";
         }
     }
 

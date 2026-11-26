@@ -1,5 +1,6 @@
 package dev.agentworkshq.eval.core.store;
 
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ServiceException;
 import dev.agentworkshq.eval.core.exception.ValidationException;
@@ -109,7 +110,7 @@ final class RunCodec {
         }
         byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
         if (bytes.length > limits.maxFileBytes()) {
-            throw new ValidationException(ErrorMessages.EVAL_E019, "run " + run.runId(),
+            throw new ValidationException(ErrorMessages.EVAL_E019, "run " + Echo.safe(run.runId()),
                     ": larger than " + limits.maxFileBytes() + " bytes");
         }
         return bytes;
@@ -148,7 +149,7 @@ final class RunCodec {
             if (e.getErrorMessage() == ErrorMessages.EVAL_E019) {
                 throw e;
             }
-            throw new ValidationException(ErrorMessages.EVAL_E019, e, file, ": " + e.getMessage());
+            throw new ValidationException(ErrorMessages.EVAL_E019, e, Echo.safe(file), ": " + e.getMessage());
         }
     }
 
@@ -315,13 +316,13 @@ final class RunCodec {
     private static void rejectUnknown(JsonNode node, Set<String> allowed, String file) {
         for (String name : node.propertyNames()) {
             if (!allowed.contains(name)) {
-                throw invalid(file, ": unknown field '" + Checks.printable(name, 64) + "'");
+                throw invalid(file, ": unknown field '" + Echo.safe(name) + "'");
             }
         }
     }
 
     private static ValidationException invalid(String file, String detail) {
-        return new ValidationException(ErrorMessages.EVAL_E019, file, detail);
+        return new ValidationException(ErrorMessages.EVAL_E019, Echo.safe(file), detail);
     }
 
     private static ValidationException malformed(String file, TokenStreamLocation location) {

@@ -1,5 +1,6 @@
 package dev.agentworkshq.eval.core.store;
 
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ResourceNotFoundException;
 import dev.agentworkshq.eval.core.exception.ServiceException;
@@ -88,7 +89,7 @@ public final class FileRunStore implements RunStore {
             saveLock.lock();
             try {
                 if (Files.exists(target, LinkOption.NOFOLLOW_LINKS)) {
-                    throw new ValidationException(ErrorMessages.EVAL_E018, run.runId());
+                    throw new ValidationException(ErrorMessages.EVAL_E018, Echo.safe(run.runId()));
                 }
                 Files.move(temp, target);
             } finally {
@@ -96,7 +97,7 @@ public final class FileRunStore implements RunStore {
             }
             log.debug("Saved run file {}", target.getFileName());
         } catch (FileAlreadyExistsException e) {
-            throw new ValidationException(ErrorMessages.EVAL_E018, e, run.runId());
+            throw new ValidationException(ErrorMessages.EVAL_E018, e, Echo.safe(run.runId()));
         } catch (IOException e) {
             throw new ServiceException(ErrorMessages.EVAL_E023, e, "save");
         } finally {
@@ -110,7 +111,7 @@ public final class FileRunStore implements RunStore {
         Path path = pathFor(runId);
         StoredRun run = read(path, runId);
         if (run == null) {
-            throw new ResourceNotFoundException(ErrorMessages.EVAL_E017, runId);
+            throw new ResourceNotFoundException(ErrorMessages.EVAL_E017, Echo.safe(runId));
         }
         return run;
     }
@@ -184,7 +185,7 @@ public final class FileRunStore implements RunStore {
             throw new ServiceException(ErrorMessages.EVAL_E023, e, "read");
         }
         if (!real.startsWith(root)) {
-            throw new ValidationException(ErrorMessages.EVAL_E020, "run file leaves the store directory: " + name);
+            throw new ValidationException(ErrorMessages.EVAL_E020, "run file leaves the store directory: " + Echo.safe(name));
         }
         if (!real.getFileName().toString().equals(name) || !Files.isRegularFile(real)) {
             return null;
@@ -198,7 +199,7 @@ public final class FileRunStore implements RunStore {
         StoredRun run = codec.read(bytes, name);
         String idInName = name.substring(PREFIX.length(), name.length() - SUFFIX.length());
         if (!run.runId().equals(idInName) || expectedId != null && !run.runId().equals(expectedId)) {
-            throw new ValidationException(ErrorMessages.EVAL_E019, name, ": run id does not match the file name");
+            throw new ValidationException(ErrorMessages.EVAL_E019, Echo.safe(name), ": run id does not match the file name");
         }
         log.debug("Read run file {}", name);
         return run;

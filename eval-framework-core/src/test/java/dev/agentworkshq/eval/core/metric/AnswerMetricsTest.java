@@ -119,6 +119,20 @@ class AnswerMetricsTest {
     }
 
     @Test
+    void regexDeadlineIsBetweenOneMillisecondAndTenSeconds() {
+        RegexMetric.Mode mode = RegexMetric.Mode.MUST_MATCH;
+        for (Duration bad : List.of(Duration.ZERO, Duration.ofNanos(999_999), Duration.ofSeconds(10).plusNanos(1),
+                Duration.ofMillis(Long.MAX_VALUE), Duration.ofNanos(Long.MAX_VALUE),
+                Duration.ofSeconds(Long.MAX_VALUE))) {
+            assertThatThrownBy(() -> new RegexMetric("r", "a", mode, 5, bad)).isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("between 1 millisecond and 10 seconds");
+        }
+        assertThat(new RegexMetric("r", "a", mode, 5, Duration.ofMillis(1)).name()).isEqualTo("r");
+        assertThat(new RegexMetric("r", "a", mode, 5, Duration.ofSeconds(10)).evaluate(withSources(), answer("a"))
+                .status()).isEqualTo(MetricStatus.PASSED);
+    }
+
+    @Test
     void regexMustMatch() {
         RegexMetric metric = new RegexMetric("has_digits", "\\d{3}", RegexMetric.Mode.MUST_MATCH);
 

@@ -116,7 +116,7 @@ A case has `id` and `question` (required strings) and the optional fields `expec
 Parsing is strict:
 
 - Types are not coerced. A number where a string is expected is an error, so quote values such as `"001"`.
-- Unknown fields, duplicate keys, YAML anchors and aliases are rejected.
+- Unknown fields, duplicate keys, YAML anchors, aliases and explicit tags such as `!!int` are rejected.
 - Input must be valid UTF-8. A leading BOM is ignored.
 - Paths must be relative to the dataset directory. Absolute paths, drive letters, `..` segments and symlinks that leave the directory are rejected.
 
@@ -148,7 +148,7 @@ Text matching for the contains metrics: Unicode NFKC, lowercase, runs of whitesp
 
 The retrieval metrics are `FAILED` with score 0.0 when nothing was retrieved. `k` is 1 to 100 and thresholds are 0 to 1.
 
-`RegexMetric` checks its deadline only when the matcher reads characters. It is a safety net, not a hard real-time limit. Patterns must always come from code, never from datasets or users.
+The `RegexMetric` deadline is 1 millisecond to 10 seconds. `RegexMetric` checks it only when the matcher reads characters. It is a safety net, not a hard real-time limit. Patterns must always come from code, never from datasets or users.
 
 ## LLM judge metrics
 
@@ -210,16 +210,16 @@ EvalRun run = new EvalRunner().run(dataset, target, metrics,
 | `maxJudgeCalls` | 500 | 0 to 100000, the most LLM judge calls in one run |
 | `labels` | none | at most 20 entries, keys and values at most 200 characters |
 
-Durations must be positive (`retryDelay` may be zero) and at most 365 days.
+Timeouts must be at least 1 millisecond, `retryDelay` may be zero, and no duration may be longer than 365 days.
 
 Behaviour:
 
 - Cases are sorted by id and results are collected by id, so the order of `caseResults` never depends on which case finished first. The same input with the same clock gives an equal `EvalRun`.
 - The target must be thread safe when `concurrency` is above 1.
-- A target that throws is retried up to `maxAttempts` times with `retryDelay` between attempts, then the case is `TARGET_FAILED`. A timeout or an interrupt is never retried. A target that returns null counts as a failure.
+- A target that throws is retried up to `maxAttempts` times with `retryDelay` between attempts, then the case is `TARGET_FAILED`. A timeout or an interrupt is never retried. A target that returns null counts as a failure. A retry delay never lasts past `totalTimeout`, and when the deadline has passed before the next attempt the case is `SKIPPED_BUDGET`.
 - A target that exceeds `perCaseTimeout` gives `TIMED_OUT` and its thread is interrupted. The runner cannot kill a thread that ignores interrupts. If the call is still running 1 second after the interrupt it is counted as abandoned and it is no longer counted against `concurrency`. When abandoned calls exceed `maxAbandonedCalls`, no new case is started, every case that has not started is `SKIPPED_BUDGET` and the run finishes normally. Metric calls that ignore their time box are counted the same way.
 - A metric that throws, returns null, returns a result with another name or exceeds `perMetricTimeout` becomes an `ERROR` result. The other metrics still run and the case stays `COMPLETED` with its output.
-- After `totalTimeout` the remaining cases are `SKIPPED_BUDGET` with no output, no metric results and a zero duration. Running cases finish within their own time boxes.
+- After `totalTimeout` the remaining cases are `SKIPPED_BUDGET` with no output, no metric results and a zero duration. Running attempts finish within their own time boxes.
 - If the calling thread is interrupted, the run is cancelled, the interrupt flag is restored and a `ServiceException` (`EVAL_E016`) is thrown. The runner creates daemon threads named `eval-runner-*` and always shuts them down.
 - `errorMessage` and the error reasons written by the runner contain the exception class name and the attempt count or timeout only, never an exception message, so they cannot leak the question or the answer.
 
@@ -338,13 +338,13 @@ Escaping and limits:
 
 ## JUnit and Spring Boot
 
-The starter auto-configures an `EvalSuite`. `EvalSuite.evaluate` loads the dataset, runs it, saves the run file, compares it with the baseline when the request has a `baselineRunId`, checks the thresholds and renders the reports. The gate fails when there is any violation. An exhausted judge budget is a metric error and fails the gate on purpose (`maxMetricErrors` is 0 by default). A threshold on a metric that has no pass rate or mean (all skipped, or absent) is a violation, never a silent pass.
+The starter auto-configures an `EvalSuite`. `EvalSuite.evaluate` loads the dataset, runs it, saves the run file, compares it with the baseline when the request has a `baselineRunId`, checks the thresholds and renders the reports. The baseline is loaded and its dataset name, and its dataset content while `requireSameDataset` is true, are checked before the target or any metric is called, so a mismatch starts no run and writes no file. The gate fails when there is any violation. An exhausted judge budget is a metric error and fails the gate on purpose (`maxMetricErrors` is 0 by default). A threshold on a metric that has no pass rate or mean (all skipped, or absent) is a violation, never a silent pass.
 
 `Thresholds`: `minPassRate` and `minMeanScore` per metric name (0 to 1), `maxIncompleteCases` (cases that are `TARGET_FAILED`, `TIMED_OUT` or `SKIPPED_BUDGET`, default 0) and `maxMetricErrors` (default 0).
 
 `EvalAssertions.assertGate(outcome)` throws an `AssertionFailedError` whose message is the console report, cut at 20000 characters. `EvalAssertions.assertThat(outcome)` gives `passesGate()`, `metricPassRateAtLeast`, `metricMeanScoreAtLeast`, `noCaseRegressions()`, `noMetricErrors()` and `allCasesCompleted()`. Their messages are built from run ids, case ids, metric names, numbers and violations.
 
-Files written by the suite, with `<id>` the run id: the run file `run-<id>.json` in the store directory, and `eval-report-<id>.md` and `eval-report-<id>.json` in the report directory. The run id part is cut so that the file name has at most 100 characters. The JSON report is only written when there is a baseline comparison.
+Files written by the suite, with `<id>` the run id: the run file `run-<id>.json` in the store directory, and `eval-report-<id>.md` and `eval-report-<id>.json` in the report directory. A run id longer than 83 characters is cut in the report names, and `-` plus the first 8 hex characters of its SHA-256 are appended, so that the file name stays within 100 characters and run ids that differ only after the cut get different names. The JSON report is only written when there is a baseline comparison.
 
 The baseline directory is opened read-only: a missing directory or file is an error and a run never creates the folder. In CI use a unique run id for every run, because a run id that already exists is never overwritten.
 
@@ -454,12 +454,13 @@ Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 ### What the library does
 
 - Run files and reports never hold question, answer or chunk text. `StoredRun` copies only safe fields, and reports are built from it.
-- The library sends case text only to your target and, for judge metrics, to the judge model. In memory it is also available to your metrics, your `RunListener` and any code that holds the `EvalRun`.
+- The library sends case text only to your target and, for judge metrics, to the judge model. A custom `Metric`, `EvalTarget` or `RunListener` sees the case text: a target gets the case, a metric gets the case and the output, and a listener gets the result with the answer and the retrieved chunks. Any code that holds the `EvalRun` sees the outputs too.
 - Questions, answers and chunk text are never logged by the library. Exception messages from targets, metrics and judges are not copied into results, only class names.
 - Judge prompts put every piece of case text between markers with a random nonce, tell the judge to ignore instructions inside them and accept only a strict JSON reply, see [LLM judge metrics](#llm-judge-metrics). `SpringAiEvaluatorMetric` is the exception.
 - Paths are confined. Datasets are read only from inside the dataset directory, the baseline directory is only read, and run files and reports are written only inside their configured directories. Symbolic links that leave a directory are rejected.
 - Limits apply to dataset files, case fields, run files, judge prompts and replies, regular expressions, reports, run time, cases per run and judge calls per run.
-- The `toString` methods of the types that hold case, answer, chunk or prompt text print ids, lengths and counts instead of the text.
+- The `toString` methods of the library's records print validated ids, statuses, numbers and counts, never free text such as case text, reasons, labels or config values. Exceptions print their message.
+- Names, keys, ids and paths that an exception message or the model warning repeats have control and bidirectional characters removed and are cut to 64 characters.
 - Config keys that look like a credential and judge identifiers that look like a credential or a URL are rejected.
 - The library never calls `System.exit`.
 
@@ -469,7 +470,6 @@ Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 - Prompt injection as a whole. Delimiters and strict parsing make it harder, a judge model can still be influenced by the text it grades.
 - Your own code. A custom target, metric or listener can log or write anything. The reason, metric name and run config entries of a custom metric, and the name and `describe()` entries of a target, are copied into run files and reports as they are.
 - Secrets that you put into labels, config values, descriptions, names, case ids or tags. They are free text, appear in run files, and appear in reports in the config changes table and, when `includeRunConfig` is true, in the run config. Never put secrets in them.
-- Printing of free text by types that carry your settings or stored results, for example `RunConfig`, `StoredRun`, `Comparison`, `MetricResult` and `RagTargetOptions`.
 - Dataset files. They hold your questions and expected answers in plain text. Do not commit datasets that contain personal data.
 - Exception causes. They can contain fragments of dataset content, for example a key name, and absolute paths. Do not send stack traces to untrusted places.
 - Logging by other libraries, such as Spring AI or an HTTP client, which can include prompts when configured to.
@@ -486,7 +486,10 @@ Run files and reports go under `target/` by default so they are not committed.
 - The auto-configured judge uses the default `ChatClient.Builder` unless you supply your own `JudgeModel`.
 - The regular expression deadline is a safety net, not a hard limit.
 - Abandoned calls cannot be killed.
-- `totalTimeout` only stops new cases from starting. Running cases, including their retry delays, can end after it.
+- `totalTimeout` stops new cases and new attempts from starting. A running attempt and the metrics of its case can end after it.
+- Custom metrics and targets are trusted. The reason and metric name of a metric and the `describe()` values of a target are stored as given, so they must never contain case text.
+- Path checks do not protect against file races or hard links in the configured directories.
+- Config differences in a comparison, for example a new `library.version`, are informational and do not fail the gate. The exception is the judge, prompt version and repeats of a judge metric, see [Regression gate](#regression-gate).
 - The file run store protects only one process on Linux.
 - Run files are not tenant scoped.
 - Runs are synchronous, the caller waits for the whole run.

@@ -2,6 +2,7 @@ package dev.agentworkshq.eval.rag;
 
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ValidationException;
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.model.EvalRun;
 import java.util.Collections;
 import java.util.List;
@@ -54,6 +55,12 @@ public record RagTargetOptions(
         return new RagTargetOptions(name, tenantId, sourceNames, topK, value);
     }
 
+    @Override
+    public String toString() {
+        return "RagTargetOptions[sourceNames=" + sourceNames.size() + ", topK=" + topK + ", description="
+                + description.size() + "]";
+    }
+
     private static void requireName(String name) {
         if (name == null || name.isBlank() || name.length() > 100) {
             throw bad("name must have 1 to 100 characters");
@@ -64,7 +71,12 @@ public record RagTargetOptions(
         if (name.contains("://")) {
             throw bad("name must not be a URL");
         }
-        EvalRun.requireSafeConfigKey(name);
+        try {
+            EvalRun.requireSafeConfigKey(name);
+        } catch (ValidationException e) {
+            // the cause repeats the value, so it is not kept
+            throw bad("name looks like a credential");
+        }
     }
 
     private static List<String> checkedSourceNames(List<String> values) {
@@ -93,7 +105,7 @@ public record RagTargetOptions(
                 throw bad("description keys must not be blank");
             }
             if (RESERVED_KEYS.contains(key)) {
-                throw bad("description key '" + key + "' is reserved");
+                throw bad("description key '" + Echo.safe(key) + "' is reserved");
             }
             EvalRun.requireSafeConfigKey(key);
             if (e.getValue() == null || e.getValue().length() > 200) {

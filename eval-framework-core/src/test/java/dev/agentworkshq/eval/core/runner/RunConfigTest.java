@@ -6,8 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.agentworkshq.eval.core.exception.ValidationException;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +18,21 @@ class RunConfigTest {
     private static void rejects(Supplier<RunConfig> supplier) {
         assertThatThrownBy(supplier::get).isInstanceOf(ValidationException.class)
                 .extracting(e -> ((ValidationException) e).getErrorCode()).isEqualTo("EVAL_E011");
+    }
+
+    @Test
+    void timeoutsStartAtOneMillisecond() {
+        List<Function<Duration, RunConfig>> setters = List.of(RunConfig.defaults()::withPerCaseTimeout,
+                RunConfig.defaults()::withPerMetricTimeout, RunConfig.defaults()::withTotalTimeout);
+
+        for (Function<Duration, RunConfig> setter : setters) {
+            for (Duration bad : List.of(Duration.ZERO, Duration.ofNanos(999_999), Duration.ofDays(365).plusNanos(1),
+                    Duration.ofMillis(Long.MAX_VALUE), Duration.ofSeconds(Long.MAX_VALUE))) {
+                rejects(() -> setter.apply(bad));
+            }
+            assertThat(setter.apply(Duration.ofMillis(1))).isNotNull();
+            assertThat(setter.apply(Duration.ofDays(365))).isNotNull();
+        }
     }
 
     @Test

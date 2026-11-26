@@ -8,4 +8,9 @@ public record CaseChange(
         Double baselineScore,
         String candidateStatus,
         Double candidateScore) {
+
+    @Override
+    public String toString() {
+        return "CaseChange[kind=" + kind + ", baselineScore=" + baselineScore + ", candidateScore=" + candidateScore + "]";
+    }
 }

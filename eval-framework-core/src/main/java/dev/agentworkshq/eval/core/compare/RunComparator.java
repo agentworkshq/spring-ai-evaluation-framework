@@ -31,13 +31,8 @@ public final class RunComparator {
         Objects.requireNonNull(baseline, "baseline");
         Objects.requireNonNull(candidate, "candidate");
         Objects.requireNonNull(config, "config");
-        if (!baseline.datasetName().equals(candidate.datasetName())) {
-            throw new ValidationException(ErrorMessages.EVAL_E022, "the runs are for different datasets");
-        }
+        requireSameDataset(baseline, candidate.datasetName(), candidate.datasetFingerprint(), config);
         boolean datasetChanged = !baseline.datasetFingerprint().equals(candidate.datasetFingerprint());
-        if (datasetChanged && config.requireSameDataset()) {
-            throw new ValidationException(ErrorMessages.EVAL_E022, "the dataset content differs");
-        }
 
         Map<String, StoredCase> baseCases = byId(baseline);
         Map<String, StoredCase> candCases = byId(candidate);
@@ -89,6 +84,16 @@ public final class RunComparator {
         return new Comparison(baseline.runId(), candidate.runId(), datasetChanged,
                 !baseline.targetName().equals(candidate.targetName()), configChanges(baseline, candidate),
                 onlyInBaseline, onlyInCandidate, metrics, changes, violations);
+    }
+
+    public static void requireSameDataset(
+            StoredRun baseline, String datasetName, String datasetFingerprint, ComparisonConfig config) {
+        if (!baseline.datasetName().equals(datasetName)) {
+            throw new ValidationException(ErrorMessages.EVAL_E022, "the runs are for different datasets");
+        }
+        if (config.requireSameDataset() && !baseline.datasetFingerprint().equals(datasetFingerprint)) {
+            throw new ValidationException(ErrorMessages.EVAL_E022, "the dataset content differs");
+        }
     }
 
     private static MetricVerdict verdict(MetricAggregate b, MetricAggregate c, double tolerance) {

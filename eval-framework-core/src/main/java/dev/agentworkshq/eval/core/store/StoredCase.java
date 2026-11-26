@@ -43,4 +43,10 @@ public record StoredCase(
         }
         metricResults = metricResults.stream().sorted(Comparator.comparing(MetricResult::metricName)).toList();
     }
+
+    @Override
+    public String toString() {
+        return "StoredCase[caseId=" + caseId + ", status=" + status + ", durationMs=" + durationMs + ", metricResults="
+                + metricResults.size() + "]";
+    }
 }

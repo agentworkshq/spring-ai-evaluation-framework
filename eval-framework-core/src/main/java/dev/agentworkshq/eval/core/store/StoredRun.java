@@ -78,4 +78,10 @@ public record StoredRun(
         }
         return Collections.unmodifiableMap(new TreeMap<>(config));
     }
+
+    @Override
+    public String toString() {
+        return "StoredRun[runId=" + runId + ", datasetName=" + datasetName + ", cases=" + cases.size() + ", config="
+                + config.size() + "]";
+    }
 }

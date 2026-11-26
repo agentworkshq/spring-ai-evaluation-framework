@@ -9,13 +9,16 @@ import static dev.agentworkshq.eval.core.runner.RunnerFixtures.runner;
 import static dev.agentworkshq.eval.core.runner.RunnerFixtures.runnerThreadsAlive;
 import static dev.agentworkshq.eval.core.runner.RunnerFixtures.target;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import dev.agentworkshq.eval.core.model.CaseResult;
 import dev.agentworkshq.eval.core.model.CaseStatus;
 import dev.agentworkshq.eval.core.model.EvalRun;
+import dev.agentworkshq.eval.core.target.EvalTarget;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -25,6 +28,75 @@ class EvalRunnerTimeoutTest {
 
     private static CaseResult find(EvalRun run, String id) {
         return run.caseResults().stream().filter(r -> r.caseId().equals(id)).findFirst().orElseThrow();
+    }
+
+    private static EvalTarget failsAfter(AtomicInteger calls, Duration wait) {
+        return target(c -> {
+            calls.incrementAndGet();
+            try {
+                new CountDownLatch(1).await(wait.toMillis(), TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            throw new IllegalStateException();
+        });
+    }
+
+    @Test
+    void theRetryDelayNeverOutlastsTheTotalTimeout() {
+        AtomicInteger calls = new AtomicInteger();
+        EvalTarget failing = target(c -> {
+            calls.incrementAndGet();
+            throw new IllegalStateException();
+        });
+
+        EvalRun run = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> runner().run(dataset("d", "a", "b"),
+                failing, List.of(),
+                fast().withMaxAttempts(3).withRetryDelay(Duration.ofDays(365)).withTotalTimeout(SHORT)));
+
+        assertThat(calls.get()).isEqualTo(1);
+        assertThat(run.caseResults()).allSatisfy(r -> {
+            assertThat(r.status()).isEqualTo(CaseStatus.SKIPPED_BUDGET);
+            assertThat(r.errorMessage()).isNull();
+        });
+    }
+
+    @Test
+    void noAttemptStartsAfterTheTotalDeadline() {
+        AtomicInteger calls = new AtomicInteger();
+
+        EvalRun run = runner().run(dataset("d", "a"), failsAfter(calls, SHORT.multipliedBy(3)), List.of(),
+                fast().withMaxAttempts(3).withTotalTimeout(SHORT));
+
+        assertThat(calls.get()).isEqualTo(1);
+        assertThat(find(run, "a").status()).isEqualTo(CaseStatus.SKIPPED_BUDGET);
+    }
+
+    @Test
+    void theLastAttemptStillCountsAsFailedAfterTheDeadline() {
+        AtomicInteger calls = new AtomicInteger();
+
+        EvalRun run = runner().run(dataset("d", "a"), failsAfter(calls, SHORT.multipliedBy(3)), List.of(),
+                fast().withTotalTimeout(SHORT));
+
+        assertThat(find(run, "a").status()).isEqualTo(CaseStatus.TARGET_FAILED);
+    }
+
+    @Test
+    void aRetryWithinTheTotalTimeoutStillHappens() {
+        AtomicInteger calls = new AtomicInteger();
+        EvalTarget flaky = target(c -> {
+            if (calls.incrementAndGet() == 1) {
+                throw new IllegalStateException();
+            }
+            return output("x");
+        });
+
+        EvalRun run = runner().run(dataset("d", "a"), flaky, List.of(),
+                fast().withMaxAttempts(2).withRetryDelay(Duration.ofMillis(5)));
+
+        assertThat(calls.get()).isEqualTo(2);
+        assertThat(find(run, "a").status()).isEqualTo(CaseStatus.COMPLETED);
     }
 
     @Test

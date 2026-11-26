@@ -60,4 +60,10 @@ public record Thresholds(
     private static ValidationException bad(String detail) {
         return new ValidationException(ErrorMessages.EVAL_E010, detail);
     }
+
+    @Override
+    public String toString() {
+        return "Thresholds[minPassRate=" + minPassRate.size() + ", minMeanScore=" + minMeanScore.size()
+                + ", maxIncompleteCases=" + maxIncompleteCases + ", maxMetricErrors=" + maxMetricErrors + "]";
+    }
 }

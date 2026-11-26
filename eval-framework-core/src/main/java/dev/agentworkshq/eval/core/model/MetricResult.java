@@ -34,4 +34,9 @@ public record MetricResult(String metricName, MetricStatus status, Double score,
     public static MetricResult skipped(String metricName, String reason) {
         return new MetricResult(metricName, MetricStatus.SKIPPED, null, reason);
     }
+
+    @Override
+    public String toString() {
+        return "MetricResult[status=" + status + ", score=" + score + "]";
+    }
 }

@@ -25,6 +25,7 @@ public record RunConfig(
         int maxJudgeCalls,
         Map<String, String> labels) {
 
+    private static final Duration SHORTEST = Duration.ofMillis(1);
     private static final Duration LONGEST = Duration.ofDays(365);
 
     public RunConfig {
@@ -38,9 +39,9 @@ public record RunConfig(
         if (concurrency < 1 || concurrency > 16) {
             throw bad("concurrency must be between 1 and 16");
         }
-        positive(perCaseTimeout, "perCaseTimeout");
-        positive(perMetricTimeout, "perMetricTimeout");
-        positive(totalTimeout, "totalTimeout");
+        timeout(perCaseTimeout, "perCaseTimeout");
+        timeout(perMetricTimeout, "perMetricTimeout");
+        timeout(totalTimeout, "totalTimeout");
         if (maxAttempts < 1 || maxAttempts > 5) {
             throw bad("maxAttempts must be between 1 and 5");
         }
@@ -129,9 +130,9 @@ public record RunConfig(
         return new ValidationException(ErrorMessages.EVAL_E011, detail);
     }
 
-    private static void positive(Duration value, String field) {
-        if (value == null || value.isZero() || value.isNegative() || value.compareTo(LONGEST) > 0) {
-            throw bad(field + " must be positive and at most 365 days");
+    private static void timeout(Duration value, String field) {
+        if (value == null || value.compareTo(SHORTEST) < 0 || value.compareTo(LONGEST) > 0) {
+            throw bad(field + " must be at least 1 millisecond and at most 365 days");
         }
     }
 
@@ -169,5 +170,14 @@ public record RunConfig(
             sorted.put(key, e.getValue());
         }
         return Collections.unmodifiableMap(sorted);
+    }
+
+    @Override
+    public String toString() {
+        return "RunConfig[runId=" + runId + ", maxCases=" + maxCases + ", includeTags=" + includeTags.size()
+                + ", concurrency=" + concurrency + ", perCaseTimeout=" + perCaseTimeout + ", perMetricTimeout="
+                + perMetricTimeout + ", totalTimeout=" + totalTimeout + ", maxAttempts=" + maxAttempts + ", retryDelay="
+                + retryDelay + ", maxAbandonedCalls=" + maxAbandonedCalls + ", maxJudgeCalls=" + maxJudgeCalls
+                + ", labels=" + labels.size() + "]";
     }
 }

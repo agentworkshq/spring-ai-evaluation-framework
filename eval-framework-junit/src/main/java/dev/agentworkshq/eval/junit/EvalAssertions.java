@@ -4,12 +4,14 @@ import dev.agentworkshq.eval.core.compare.CaseChange;
 import dev.agentworkshq.eval.core.compare.ChangeKind;
 import dev.agentworkshq.eval.core.compare.MetricAggregate;
 import dev.agentworkshq.eval.core.model.CaseStatus;
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.model.Text;
 import dev.agentworkshq.eval.core.suite.EvalOutcome;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.opentest4j.AssertionFailedError;
 
 public final class EvalAssertions {
@@ -17,6 +19,7 @@ public final class EvalAssertions {
     static final int MAX_MESSAGE_CHARS = 20000;
 
     private static final int MAX_LISTED = 10;
+    private static final int MAX_VIOLATION_CHARS = 1900;
 
     private EvalAssertions() {
     }
@@ -42,8 +45,9 @@ public final class EvalAssertions {
 
         public OutcomeAssert passesGate() {
             if (!outcome.passesGate()) {
-                fail("the gate failed with " + outcome.violations().size() + " violations: "
-                        + String.join("; ", outcome.violations().subList(0, Math.min(outcome.violations().size(), MAX_LISTED))));
+                List<String> first = outcome.violations().stream().limit(MAX_LISTED)
+                        .map(v -> Echo.clean(v, MAX_VIOLATION_CHARS)).toList();
+                fail("the gate failed with " + outcome.violations().size() + " violations: " + String.join("; ", first));
             }
             return this;
         }
@@ -100,14 +104,14 @@ public final class EvalAssertions {
 
         private void check(String what, String metricName, Double actual, double minimum) {
             if (actual == null) {
-                fail("metric " + metricName + " has no " + what + ", expected at least " + num(minimum));
+                fail("metric " + Echo.safe(metricName) + " has no " + what + ", expected at least " + num(minimum));
             } else if (actual < minimum) {
-                fail(what + " of metric " + metricName + " is " + num(actual) + ", expected at least " + num(minimum));
+                fail(what + " of metric " + Echo.safe(metricName) + " is " + num(actual) + ", expected at least " + num(minimum));
             }
         }
 
         private static String listed(List<String> values) {
-            String text = String.join(", ", values.subList(0, Math.min(values.size(), MAX_LISTED)));
+            String text = values.stream().limit(MAX_LISTED).map(Echo::safe).collect(Collectors.joining(", "));
             return values.size() > MAX_LISTED ? text + " and " + (values.size() - MAX_LISTED) + " more" : text;
         }
 
@@ -116,7 +120,7 @@ public final class EvalAssertions {
         }
 
         private void fail(String message) {
-            throw new AssertionFailedError("Run " + outcome.run().runId() + ": " + message);
+            throw new AssertionFailedError("Run " + Echo.safe(outcome.run().runId()) + ": " + message);
         }
     }
 }

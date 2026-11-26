@@ -32,4 +32,10 @@ public record MetricAggregate(
                 scored == 0 ? null : sum / scored,
                 counted == 0 ? null : (double) passed / counted);
     }
+
+    @Override
+    public String toString() {
+        return "MetricAggregate[passed=" + passed + ", failed=" + failed + ", error=" + error + ", skipped=" + skipped
+                + ", meanScore=" + meanScore + ", passRate=" + passRate + "]";
+    }
 }

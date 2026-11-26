@@ -172,6 +172,26 @@ class RagEngineTargetTest {
     }
 
     @Test
+    void nameErrorsNeverRepeatTheValue() {
+        for (String name : new String[] {"token SECRET-MARKER-TEXT", "https://SECRET-MARKER-TEXT.example"}) {
+            assertThatThrownBy(() -> RagTargetOptions.defaults().withName(name))
+                    .isInstanceOf(ValidationException.class)
+                    .hasMessageContaining("name ")
+                    .hasMessageNotContaining("SECRET-MARKER-TEXT")
+                    .hasNoCause();
+        }
+    }
+
+    @Test
+    void optionsToStringHidesEveryText() {
+        // a name may not contain the word secret
+        RagTargetOptions options = new RagTargetOptions("MARKER-TEXT-name", "SECRET-MARKER-TEXT",
+                List.of("SECRET-MARKER-TEXT"), 3, Map.of("MARKER-TEXT", "SECRET-MARKER-TEXT"));
+
+        assertThat(options.toString()).isEqualTo("RagTargetOptions[sourceNames=1, topK=3, description=1]");
+    }
+
+    @Test
     void validatesTheName() {
         RagTargetOptions defaults = RagTargetOptions.defaults();
 

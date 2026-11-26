@@ -17,6 +17,8 @@ public final class RegexMetric implements Metric {
 
     private static final int DEFAULT_MAX_INPUT_CHARS = 50_000;
     private static final Duration DEFAULT_DEADLINE = Duration.ofMillis(200);
+    private static final Duration MIN_DEADLINE = Duration.ofMillis(1);
+    private static final Duration MAX_DEADLINE = Duration.ofSeconds(10);
     private static final int MAX_PATTERN_CHARS = 500;
 
     private final String name;
@@ -42,8 +44,9 @@ public final class RegexMetric implements Metric {
         if (maxInputChars <= 0) {
             throw MetricArgs.bad("maxInputChars must be positive");
         }
-        if (deadline == null || deadline.isZero() || deadline.isNegative()) {
-            throw MetricArgs.bad("deadline must be positive");
+        // the range check also keeps toNanos below from overflowing
+        if (deadline == null || deadline.compareTo(MIN_DEADLINE) < 0 || deadline.compareTo(MAX_DEADLINE) > 0) {
+            throw MetricArgs.bad("deadline must be between 1 millisecond and 10 seconds");
         }
         try {
             this.pattern = Pattern.compile(pattern);

@@ -26,4 +26,12 @@ public record Comparison(
     public boolean passesGate() {
         return violations.isEmpty();
     }
+
+    @Override
+    public String toString() {
+        return "Comparison[datasetChanged=" + datasetChanged + ", targetChanged=" + targetChanged + ", configChanges="
+                + configChanges.size() + ", onlyInBaseline=" + onlyInBaseline.size() + ", onlyInCandidate="
+                + onlyInCandidate.size() + ", metrics=" + metrics.size() + ", caseChanges=" + caseChanges.size()
+                + ", violations=" + violations.size() + "]";
+    }
 }

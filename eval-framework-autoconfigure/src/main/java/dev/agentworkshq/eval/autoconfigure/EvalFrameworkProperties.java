@@ -29,6 +29,11 @@ public record EvalFrameworkProperties(
             limits(maxFileBytes, maxCases);
         }
 
+        @Override
+        public String toString() {
+            return "Dataset[maxFileBytes=" + maxFileBytes + ", maxCases=" + maxCases + "]";
+        }
+
         public DatasetLimits limits() {
             return limits(maxFileBytes, maxCases);
         }
@@ -48,6 +53,11 @@ public record EvalFrameworkProperties(
         public Baseline {
             requirePath(dir, "eval-framework.baseline.dir");
         }
+
+        @Override
+        public String toString() {
+            return "Baseline[]";
+        }
     }
 
     public record Store(@DefaultValue("target/eval-runs") String dir, @DefaultValue("true") boolean enabled) {
@@ -55,12 +65,22 @@ public record EvalFrameworkProperties(
         public Store {
             requirePath(dir, "eval-framework.store.dir");
         }
+
+        @Override
+        public String toString() {
+            return "Store[enabled=" + enabled + "]";
+        }
     }
 
     public record Report(@DefaultValue("target/eval-reports") String dir, @DefaultValue("true") boolean enabled) {
 
         public Report {
             requirePath(dir, "eval-framework.report.dir");
+        }
+
+        @Override
+        public String toString() {
+            return "Report[enabled=" + enabled + "]";
         }
     }
 
@@ -102,6 +122,17 @@ public record EvalFrameworkProperties(
                 JudgeIdentifier.require(identifier);
             }
         }
+
+        @Override
+        public String toString() {
+            return "Judge[configured=" + (identifier != null) + "]";
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "EvalFrameworkProperties[enabled=" + enabled + ", dataset=" + dataset + ", baseline=" + baseline
+                + ", store=" + store + ", report=" + report + ", runner=" + runner + ", judge=" + judge + "]";
     }
 
     private static void requirePath(String value, String property) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.agentworkshq.eval.core.compare.ChangeKind;
+import dev.agentworkshq.eval.core.compare.ComparisonConfig;
 import dev.agentworkshq.eval.core.dataset.DatasetLimits;
 import dev.agentworkshq.eval.core.dataset.DatasetLoader;
 import dev.agentworkshq.eval.core.exception.BaseException;
@@ -25,6 +26,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -176,6 +178,78 @@ class EvalSuiteTest {
         assertThat(outcome.markdownReport()).contains("no baseline");
         assertThat(outcome.reportFiles()).containsExactly("eval-report-solo.md");
         assertThat(names(baselineDir.getParent())).doesNotContain("baselines");
+    }
+
+    @Test
+    void aChangedDatasetFailsBeforeAnythingIsCalled() throws IOException {
+        makeBaseline("base");
+        writeDataset("changed");
+
+        assertRejectedBeforeAnyCall("sample.yaml", "the dataset content differs");
+    }
+
+    @Test
+    void aBaselineOfAnotherDatasetFailsBeforeAnythingIsCalled() throws IOException {
+        makeBaseline("base");
+        Files.writeString(datasets.resolve("other.yaml"), "name: other\ncases:\n  - id: a\n    question: q\n");
+
+        assertRejectedBeforeAnyCall("other.yaml", "the runs are for different datasets");
+    }
+
+    @Test
+    void aChangedDatasetRunsWhenTheSameDatasetIsNotRequired() throws IOException {
+        makeBaseline("base");
+        writeDataset("changed");
+
+        EvalOutcome outcome = suite().evaluate("sample.yaml", good(), List.of(m()), request("cand")
+                .withBaselineRunId("base")
+                .withComparison(ComparisonConfig.defaults().withRequireSameDataset(false)));
+
+        assertThat(outcome.comparison().datasetChanged()).isTrue();
+    }
+
+    private void assertRejectedBeforeAnyCall(String dataset, String reason) throws IOException {
+        AtomicInteger calls = new AtomicInteger();
+        EvalTarget counting = target(c -> {
+            calls.incrementAndGet();
+            return answer("good");
+        });
+        Metric counted = metric("m", o -> {
+            calls.incrementAndGet();
+            return MetricResult.passed("m", 1.0, "ok");
+        });
+
+        assertThatThrownBy(() -> suite().evaluate(dataset, counting, List.of(counted),
+                request("cand").withBaselineRunId("base")))
+                .isInstanceOf(BaseException.class)
+                .hasMessageContaining(reason)
+                .extracting(e -> ((BaseException) e).getErrorMessage()).isEqualTo(ErrorMessages.EVAL_E022);
+        assertThat(calls.get()).isZero();
+        assertThat(names(storeDir)).containsExactly("run-base.json");
+        assertThat(reportDir).isEmptyDirectory();
+    }
+
+    @Test
+    void cutRunIdsGetDifferentDeterministicReportNames() {
+        String shared = "r".repeat(90);
+        EvalRequest unsaved = request(shared + "-one").withSaveRun(false);
+
+        List<String> one = suite().evaluate("sample.yaml", good(), List.of(m()), unsaved).reportFiles();
+        List<String> again = suite().evaluate("sample.yaml", good(), List.of(m()), unsaved).reportFiles();
+        List<String> two = suite().evaluate("sample.yaml", good(), List.of(m()), request(shared + "-two"))
+                .reportFiles();
+
+        assertThat(one).isEqualTo(again).doesNotContainAnyElementsOf(two);
+        assertThat(one.getFirst()).matches("eval-report-r{74}-[0-9a-f]{8}\\.md");
+        assertThat(two.getFirst()).matches("eval-report-r{74}-[0-9a-f]{8}\\.md");
+    }
+
+    @Test
+    void aRunIdThatFitsIsNotChanged() {
+        String id = "r".repeat(83);
+
+        assertThat(suite().evaluate("sample.yaml", good(), List.of(m()), request(id)).reportFiles())
+                .containsExactly("eval-report-" + id + ".md");
     }
 
     @Test

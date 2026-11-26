@@ -48,4 +48,9 @@ public record RunSummary(
         byMetric.forEach((name, results) -> result.add(MetricAggregate.of(name, results)));
         return result;
     }
+
+    @Override
+    public String toString() {
+        return "RunSummary[caseCounts=" + caseCounts + ", metrics=" + metrics.size() + ", config=" + config.size() + "]";
+    }
 }

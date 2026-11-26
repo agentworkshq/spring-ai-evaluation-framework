@@ -25,7 +25,7 @@ public record EvalDataset(String name, List<EvalCase> cases) {
         cases = cases.stream().sorted(Comparator.comparing(EvalCase::id)).toList();
         for (int i = 1; i < cases.size(); i++) {
             if (cases.get(i).id().equals(cases.get(i - 1).id())) {
-                throw Checks.bad("field 'cases' has a duplicate id '" + cases.get(i).id() + "'");
+                throw Checks.bad("field 'cases' has a duplicate id '" + Echo.safe(cases.get(i).id()) + "'");
             }
         }
     }

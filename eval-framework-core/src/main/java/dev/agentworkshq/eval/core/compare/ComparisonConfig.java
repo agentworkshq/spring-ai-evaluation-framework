@@ -93,4 +93,12 @@ public record ComparisonConfig(
     private static ValidationException bad(String detail) {
         return new ValidationException(ErrorMessages.EVAL_E010, detail);
     }
+
+    @Override
+    public String toString() {
+        return "ComparisonConfig[defaultTolerance=" + defaultTolerance + ", metricTolerances=" + metricTolerances.size()
+                + ", maxCaseRegressions=" + maxCaseRegressions + ", requireSameDataset=" + requireSameDataset
+                + ", failOnIncomparable=" + failOnIncomparable + ", failOnLostCoverage=" + failOnLostCoverage
+                + ", minPassRates=" + minPassRates.size() + "]";
+    }
 }

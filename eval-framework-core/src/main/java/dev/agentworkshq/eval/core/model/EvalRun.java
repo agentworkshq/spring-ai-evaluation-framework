@@ -49,7 +49,7 @@ public record EvalRun(
     public static void requireSafeConfigKey(String key) {
         if (looksLikeSecret(key)) {
             throw new ValidationException(ErrorMessages.EVAL_E011,
-                    "config key '" + key.replaceAll("\\p{Cntrl}", "?") + "' looks like a credential and is not allowed");
+                    "config key '" + Echo.safe(key) + "' looks like a credential and is not allowed");
         }
     }
 

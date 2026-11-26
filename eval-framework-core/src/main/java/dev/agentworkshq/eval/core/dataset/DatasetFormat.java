@@ -1,5 +1,6 @@
 package dev.agentworkshq.eval.core.dataset;
 
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ValidationException;
 import java.util.List;
@@ -26,7 +27,7 @@ public enum DatasetFormat {
             }
         }
         int dot = fileName == null ? -1 : fileName.lastIndexOf('.');
-        String ext = dot < 0 ? "none" : DatasetLoader.safe(fileName.substring(dot), 16);
+        String ext = dot < 0 ? "none" : Echo.safe(fileName.substring(dot));
         throw new ValidationException(ErrorMessages.EVAL_E004, ext);
     }
 

@@ -1,5 +1,6 @@
 package dev.agentworkshq.eval.core.runner;
 
+import dev.agentworkshq.eval.core.model.Echo;
 import dev.agentworkshq.eval.core.exception.ErrorMessages;
 import dev.agentworkshq.eval.core.exception.ServiceException;
 import dev.agentworkshq.eval.core.exception.ValidationException;
@@ -79,7 +80,7 @@ public final class EvalRunner {
         List<Metric> metricList = checkedMetrics(metrics);
         List<EvalCase> selected = dataset.cases().stream().filter(c -> isSelected(c, config)).toList();
         if (selected.isEmpty()) {
-            throw new ValidationException(ErrorMessages.EVAL_E014, dataset.name());
+            throw new ValidationException(ErrorMessages.EVAL_E014, Echo.safe(dataset.name()));
         }
         if (selected.size() > config.maxCases()) {
             throw new ValidationException(ErrorMessages.EVAL_E013, selected.size(), config.maxCases());
@@ -147,7 +148,7 @@ public final class EvalRunner {
             }
         }
         if (!duplicates.isEmpty()) {
-            throw new ValidationException(ErrorMessages.EVAL_E015, String.join(", ", duplicates));
+            throw new ValidationException(ErrorMessages.EVAL_E015, duplicates.stream().map(Echo::safe).collect(Collectors.joining(", ")));
         }
         return List.copyOf(list);
     }
@@ -204,7 +205,7 @@ public final class EvalRunner {
             EvalRun.requireSafeConfigKey(key);
             if (e.getValue() == null || e.getValue().length() > 200) {
                 throw new ValidationException(ErrorMessages.EVAL_E011,
-                        "config entry '" + key.replaceAll("\\p{Cntrl}", "?") + "' must have a value of at most 200 characters");
+                        "config entry '" + Echo.safe(key) + "' must have a value of at most 200 characters");
             }
             into.put(key, e.getValue());
         }
@@ -214,7 +215,8 @@ public final class EvalRunner {
         Map<String, String> described = target.describe();
         String model = described == null ? null : described.get("model");
         if (model != null && metrics.stream().anyMatch(m -> model.equals(m.runConfig().get("judge")))) {
-            log.warn("The target model and the judge model are both '{}', a model should not grade its own answers", model);
+            log.warn("The target model and the judge model are both '{}', a model should not grade its own answers",
+                    Echo.safe(model));
         }
     }
 
@@ -290,7 +292,19 @@ public final class EvalRunner {
         }
 
         private boolean stopped() {
-            return System.nanoTime() - deadline >= 0 || box.abandonedCalls() > config.effectiveMaxAbandonedCalls();
+            return deadline - System.nanoTime() <= 0 || tooManyAbandoned();
+        }
+
+        private boolean tooManyAbandoned() {
+            return box.abandonedCalls() > config.effectiveMaxAbandonedCalls();
+        }
+
+        // false when the total deadline leaves no room for another attempt
+        private boolean awaitRetry() throws InterruptedException {
+            long remaining = deadline - System.nanoTime();
+            long delay = config.retryDelay().toNanos();
+            TimeUnit.NANOSECONDS.sleep(Math.min(delay, remaining));
+            return delay < remaining && deadline - System.nanoTime() > 0;
         }
 
         private CaseResult skipped(EvalCase evalCase) {
@@ -323,11 +337,14 @@ public final class EvalRunner {
                                 List.of(), start);
                     } else {
                         failure = className(outcome.error());
-                        if (attempts >= config.maxAttempts() || stopped()) {
+                        if (attempts >= config.maxAttempts()) {
                             break;
                         }
-                        if (!config.retryDelay().isZero()) {
-                            Thread.sleep(config.retryDelay().toMillis());
+                        if (!awaitRetry()) {
+                            return skipped(evalCase);
+                        }
+                        if (tooManyAbandoned()) {
+                            break;
                         }
                     }
                 }

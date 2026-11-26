@@ -1,20 +1,22 @@
 # spring-ai-evaluation-framework
 
+## What it is
+
 Evaluation framework for Spring AI applications.
+It runs a dataset of cases against your application, scores every answer with metrics and compares the run with a committed baseline.
+It is a library that you call from a test or from your own code, and a failed gate can fail the build.
 
-Planned Maven coordinates:
+What it does not do:
 
-```xml
-<dependency>
-    <groupId>dev.agentworkshq</groupId>
-    <artifactId>eval-framework-spring-boot-starter</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
-</dependency>
-```
-
-Artifacts are not on Maven Central yet.
+- it has no web interface, REST endpoints or database
+- it does not generate datasets or decide what a correct answer is, you write the cases
+- it does not monitor production traffic, it evaluates the cases you give it
+- it does not test statistical significance
+- it calls no model on its own, only your target and the judge you configure do
 
 ## Quick start
+
+Planned Maven coordinates are `dev.agentworkshq:eval-framework-spring-boot-starter:0.1.0-SNAPSHOT`. Artifacts are not on Maven Central yet, see [Building from source](#building-from-source).
 
 Add the starter and, for tests, the JUnit module:
 
@@ -31,35 +33,6 @@ Add the starter and, for tests, the JUnit module:
     <version>0.1.0-SNAPSHOT</version>
     <scope>test</scope>
 </dependency>
-```
-
-Properties with their defaults. Relative paths are resolved against the working directory. None of the directories is created when the application starts.
-
-```yaml
-eval-framework:
-  enabled: true
-  dataset:
-    root: src/test/resources/eval-datasets
-    max-file-bytes: 5242880
-    max-cases: 1000
-  baseline:
-    dir: src/test/resources/eval-baselines
-  store:
-    enabled: true
-    dir: target/eval-runs
-  report:
-    enabled: true
-    dir: target/eval-reports
-  runner:
-    concurrency: 1
-    per-case-timeout: 60s
-    per-metric-timeout: 60s
-    total-timeout: 30m
-    max-attempts: 1
-    max-cases: 1000
-    max-judge-calls: 500
-  judge:
-    identifier:   # optional, creates a JudgeModel bean
 ```
 
 A complete test with a fake target and deterministic metrics. The dataset file is `src/test/resources/eval-datasets/support.yaml`:
@@ -97,69 +70,18 @@ class SupportBotEvalTest {
 }
 ```
 
-`EvalSuite.evaluate` loads the dataset, runs it, saves the run file, compares it with the baseline when the request has a `baselineRunId`, checks the thresholds and renders the reports. The gate fails when there is any violation. An exhausted judge budget is a metric error and fails the gate on purpose (`maxMetricErrors` is 0 by default). A threshold on a metric that has no pass rate or mean (all skipped, or absent) is a violation, never a silent pass.
+See [JUnit and Spring Boot](#junit-and-spring-boot) for what the suite does and [Configuration reference](#configuration-reference) for the properties.
 
-`Thresholds`: `minPassRate` and `minMeanScore` per metric name (0 to 1), `maxIncompleteCases` (cases that are `TARGET_FAILED`, `TIMED_OUT` or `SKIPPED_BUDGET`, default 0) and `maxMetricErrors` (default 0).
+## Concepts
 
-`EvalAssertions.assertGate(outcome)` throws an `AssertionFailedError` whose message is the console report, cut at 20000 characters. `EvalAssertions.assertThat(outcome)` gives `passesGate()`, `metricPassRateAtLeast`, `metricMeanScoreAtLeast`, `noCaseRegressions()`, `noMetricErrors()` and `allCasesCompleted()`. Their messages contain only ids, metric names and numbers.
-
-Files written by the suite, with `<id>` the run id: the run file `run-<id>.json` in the store directory, and `eval-report-<id>.md` and `eval-report-<id>.json` in the report directory. The run id part is cut so that the file name has at most 100 characters. The JSON report is only written when there is a baseline comparison.
-
-Baseline workflow:
-
-1. Run the suite once with a fixed run id.
-2. Copy `target/eval-runs/run-<id>.json` to `src/test/resources/eval-baselines/` and commit it.
-3. Set `baselineRunId` in the request: `request.withBaselineRunId("support-baseline")`.
-
-The baseline directory is opened read-only: a missing directory or file is an error and a run never creates the folder. In CI use a unique run id for every run, because a run id that already exists is never overwritten.
-
-The judge bean (`eval-framework.judge.identifier`) uses the application's default `ChatClient.Builder`. The context starts without one, and the first judge call then fails with a clear error. To use a different judge model than the one your application uses, define your own `JudgeModel` bean, it replaces the auto-configured one.
-
-Run files and reports go under `target/` by default so they are not committed. The question, answer and chunk text are never written to them. Datasets with real data must not be committed: a dataset file contains your questions and expected answers in plain text.
-
-## Example: evaluating the RAG engine
-
-`eval-framework-rag-adapter` turns a `RagService` from [spring-ai-rag-engine](https://github.com/agentworkshq/spring-ai-rag-engine) into an `EvalTarget`. It is not part of the starter, add it yourself:
-
-```java
-RagEngineTarget target = RagEngineTarget.of(ragService, RagTargetOptions.defaults().withTopK(3));
-```
-
-The tenant, the source filter and `topK` come from `RagTargetOptions`, never from a dataset case. Source filter entries are rag-engine source names, not file names.
-
-`eval-framework-sample` is a complete offline example with fake embedding and chat models, so it needs no model server, API key or Docker. The rag-engine artifacts are not on Maven Central yet, so install them into your local Maven repository first. This is needed for any build from the root of this repository:
-
-```bash
-git clone https://github.com/agentworkshq/spring-ai-rag-engine.git
-cd spring-ai-rag-engine
-./mvnw install -DskipTests
-```
-
-Then, in this repository:
-
-```bash
-./mvnw -pl eval-framework-sample -am verify
-```
-
-`GoldenRagEvalTest` runs 15 golden cases against the real ingestion and retrieval code and compares each run with a committed baseline. It shows that:
-
-- the healthy target passes the gate and reproduces the baseline scores
-- a target limited to the troubleshooting document fails the gate, and the report names the metrics and cases that got worse
-- the run file and the reports contain no question, answer or document text
-- two runs of the same target give the same results
-
-The scores say nothing about the quality of a real system: the fake embedding model only matches shared words, and the fake chat model repeats the first sentence of the best chunk.
-
-To run the same dataset against real models, outside the offline test configuration:
-
-- add a Spring AI model starter and a vector store, and leave out the fake `EmbeddingModel`, `VectorStore` and `ChatClient.Builder` beans
-- set the provider properties, for Ollama `spring.ai.ollama.base-url`, `spring.ai.ollama.chat.model` and `spring.ai.ollama.embedding.model`
-- retune `rag-engine.chunking.chunk-size`, `rag-engine.chunking.overlap`, `rag-engine.retrieval.top-k` and `rag-engine.retrieval.similarity-threshold`, the sample values fit only the fake embedding model
-- record the model names with `RagTargetOptions.withDescription` so that they show up in run files
-- replace the `mustContain` expectations if your model paraphrases, record a new baseline and loosen the thresholds to what your models reliably reach
-- to add judge metrics, set `eval-framework.judge.identifier` to a model other than the one under test
-
-Limitation: a rag-engine citation carries a snippet of at most 200 characters, not the whole chunk, and the adapter only sees citations. Judge metrics such as faithfulness would therefore judge against truncated context and can report supported claims as unsupported. With `rag-engine.answer.cite-sources=false` the adapter sees no retrieved chunks at all.
+| Concept | Meaning |
+| --- | --- |
+| Dataset | a named list of cases: a question and what you expect of the answer |
+| Target | the system under test, an `EvalTarget` that turns one case into a `TargetOutput` |
+| Metric | scores one output against its case as `PASSED`, `FAILED`, `ERROR` or `SKIPPED` |
+| Run | the results of one dataset against one target with a list of metrics |
+| Baseline | a saved run that you accepted and committed, later runs are compared with it |
+| Gate | the pass or fail decision from thresholds and the comparison with the baseline |
 
 ## Datasets
 
@@ -200,17 +122,11 @@ Parsing is strict:
 
 Limits, all configurable through `DatasetLimits`: 5 MB per file, 1000 cases, 64 KB per JSONL line, nesting depth 20. A file that goes over a limit is rejected while it is read.
 
-Exception causes can contain fragments of dataset content, for example a key name. A host application must not send stack traces to untrusted places.
-
-Datasets can contain real data. Do not commit datasets that contain personal data.
-
-## Run config
-
-An `EvalRun` carries a config map that ends up in run files and reports. Keys are split into words on non-alphanumeric characters and camelCase boundaries, and a key is rejected when any word is one of `key`, `secret`, `token`, `password`, `passwd`, `authorization`, `credential`, `credentials`, `apikey` or `bearer`. So `api-key` and `db_password` are rejected, while `max-tokens`, `monkey` and `top-k` are allowed. This check is only a safety net. The runner and adapters must add only known, non-secret settings to the run config.
+Datasets can contain real data, see [Security and privacy](#security-and-privacy).
 
 ## Metrics
 
-Every metric returns `PASSED`, `FAILED`, `ERROR` or `SKIPPED` with a score between 0 and 1 (no score for `ERROR` and `SKIPPED`) and a short reason. Reasons contain only ranks, counts and 1-based indexes. They never contain text from the dataset, the question, the answer or retrieved chunks.
+Every metric returns `PASSED`, `FAILED`, `ERROR` or `SKIPPED` with a score between 0 and 1 (no score for `ERROR` and `SKIPPED`) and a short reason. The reasons of the built-in metrics contain only ranks, counts, 1-based indexes, scores and exception class names. They never contain text from the dataset, the question, the answer or retrieved chunks.
 
 Source matching: entries are trimmed, backslashes become slashes and one leading `./` is dropped. An expected source matches a chunk when it equals the chunk's `source` or `documentId` exactly, case-sensitive. A chunk with neither is never relevant. Chunks keep the target's order as their rank, scores are never used to re-sort.
 
@@ -230,49 +146,9 @@ Text matching for the contains metrics: Unicode NFKC, lowercase, runs of whitesp
 | `CitationGroundingMetric` | `citation_grounded` | nothing | nothing was cited | fraction of cited entries that match a retrieved chunk, passes only at 1.0 |
 | `LatencyMetric(max)` | `latency` | nothing | never | passes when latency is at most `max` |
 
+The retrieval metrics are `FAILED` with score 0.0 when nothing was retrieved. `k` is 1 to 100 and thresholds are 0 to 1.
+
 `RegexMetric` checks its deadline only when the matcher reads characters. It is a safety net, not a hard real-time limit. Patterns must always come from code, never from datasets or users.
-
-The retrieval metrics are `FAILED` with score 0.0 when nothing was retrieved. `k` is 1 to 100 and thresholds are 0 to 1. The regex pattern must come from code, never from a dataset.
-
-## Runner
-
-`EvalRunner.run(dataset, target, metrics, config)` runs every selected case against the target, evaluates the metrics and returns an `EvalRun`. A `RunListener` can be passed as a fifth argument. It is called from worker threads once per case with the result, the number of finished cases and the total, including cases skipped by a budget. An exception thrown by a listener is swallowed.
-
-`RunConfig` fields, each with `with...` methods that return a new instance:
-
-| Field | Default | Rule |
-| --- | --- | --- |
-| `runId` | generated | `<datasetName>-<UTC yyyyMMdd'T'HHmmssSSS>` from the clock, the dataset name is cut so the id has at most 100 characters |
-| `maxCases` | 1000 | 1 to 100000. A selection above it is rejected, a dataset is never truncated |
-| `includeTags` | empty (all cases) | a case is selected when it has at least one of the tags |
-| `concurrency` | 1 | 1 to 16, the most target calls running at once |
-| `perCaseTimeout` | 60 s | time box for one target call |
-| `perMetricTimeout` | 60 s | time box for one metric call |
-| `totalTimeout` | 30 min | after it no new case is started |
-| `maxAttempts` | 1 | 1 to 5, target calls only |
-| `retryDelay` | 0 | wait between attempts |
-| `maxAbandonedCalls` | `concurrency` | at least 1 |
-| `maxJudgeCalls` | 500 | 0 to 100000, the most LLM judge calls in one run |
-| `labels` | none | at most 20 entries, keys and values at most 200 characters |
-
-Durations must be positive (`retryDelay` may be zero) and at most 365 days.
-
-Behaviour:
-
-- Cases are sorted by id and results are collected by id, so the order of `caseResults` never depends on which case finished first. The same input with the same clock gives an equal `EvalRun`.
-- The target must be thread safe when `concurrency` is above 1.
-- A target that throws is retried up to `maxAttempts` times with `retryDelay` between attempts, then the case is `TARGET_FAILED`. A timeout or an interrupt is never retried. A target that returns null counts as a failure.
-- A target that exceeds `perCaseTimeout` gives `TIMED_OUT` and its thread is interrupted. The runner cannot kill a thread that ignores interrupts. If the call is still running 1 second after the interrupt it is counted as abandoned and it is no longer counted against `concurrency`. When abandoned calls exceed `maxAbandonedCalls`, no new case is started, every case that has not started is `SKIPPED_BUDGET` and the run finishes normally. Metric calls that ignore their time box are counted the same way.
-- A metric that throws, returns null, returns a result with another name or exceeds `perMetricTimeout` becomes an `ERROR` result. The other metrics still run and the case stays `COMPLETED` with its output.
-- After `totalTimeout` the remaining cases are `SKIPPED_BUDGET` with no output, no metric results and a zero duration. Running cases finish within their own time boxes.
-- If the calling thread is interrupted, the run is cancelled, the interrupt flag is restored and a `ServiceException` (`EVAL_E016`) is thrown. The runner creates daemon threads named `eval-runner-*` and always shuts them down.
-- `errorMessage` and metric error reasons contain the exception class name and the attempt count only, never an exception message, so they cannot leak the question or the answer.
-
-The run config contains exactly these entries: `runner.concurrency`, `runner.perCaseTimeoutMs`, `runner.perMetricTimeoutMs`, `runner.totalTimeoutMs`, `runner.maxAttempts`, `runner.maxCases`, `runner.includeTags` (sorted, comma separated), `runner.selectedCases`, `runner.abandonedCalls`, `runner.maxJudgeCalls`, `runner.judgeCallsUsed`, `dataset.caseCount`, `metrics` (sorted names, comma separated), `library.version` (`unknown` when the package has no implementation version) one `label.<key>` per label, one `metric.<metricName>.<key>` per entry of `Metric.runConfig()` and one `target.<key>` per entry of `EvalTarget.describe()`. Those keys go through the same credential check as above and values are at most 200 characters, otherwise the run is rejected before it starts and the message names the key. A metric or target must only report known, non-secret settings.
-
-If `describe()` has a `model` entry equal to the `judge` entry of a metric, the runner logs one warning, because a model should not grade its own answers.
-
-Labels are free text copied into run files and reports. Do not put secrets in them. A label key that looks like a credential is rejected.
 
 ## LLM judge metrics
 
@@ -313,15 +189,59 @@ EvalRun run = new EvalRunner().run(dataset, target, metrics,
 
 `SpringAiEvaluatorMetric(name, evaluator)` wraps any Spring AI `Evaluator`. It spends one judge call per case, gives 1.0 for a pass and 0.0 for a fail, is skipped when the output was not answered, and turns an exception into `ERROR` with the class name only. **It uses Spring AI's own prompt template, so it does not get the nonce delimiters or the strict reply parsing described above.** Prefer the three metrics above for untrusted data.
 
+## Runner
+
+`EvalRunner.run(dataset, target, metrics, config)` runs every selected case against the target, evaluates the metrics and returns an `EvalRun`. A `RunListener` can be passed as a fifth argument. It is called from worker threads once per case with the result, the number of finished cases and the total, including cases skipped by a budget. An exception thrown by a listener is swallowed.
+
+`RunConfig` fields, each with `with...` methods that return a new instance:
+
+| Field | Default | Rule |
+| --- | --- | --- |
+| `runId` | generated | `<datasetName>-<UTC yyyyMMdd'T'HHmmssSSS>` from the clock, the dataset name is cut so the id has at most 100 characters |
+| `maxCases` | 1000 | 1 to 100000. A selection above it is rejected, a dataset is never truncated |
+| `includeTags` | empty (all cases) | a case is selected when it has at least one of the tags |
+| `concurrency` | 1 | 1 to 16, the most target calls running at once |
+| `perCaseTimeout` | 60 s | time box for one target call |
+| `perMetricTimeout` | 60 s | time box for one metric call |
+| `totalTimeout` | 30 min | after it no new case is started |
+| `maxAttempts` | 1 | 1 to 5, target calls only |
+| `retryDelay` | 0 | wait between attempts |
+| `maxAbandonedCalls` | `concurrency` | at least 1 |
+| `maxJudgeCalls` | 500 | 0 to 100000, the most LLM judge calls in one run |
+| `labels` | none | at most 20 entries, keys and values at most 200 characters |
+
+Durations must be positive (`retryDelay` may be zero) and at most 365 days.
+
+Behaviour:
+
+- Cases are sorted by id and results are collected by id, so the order of `caseResults` never depends on which case finished first. The same input with the same clock gives an equal `EvalRun`.
+- The target must be thread safe when `concurrency` is above 1.
+- A target that throws is retried up to `maxAttempts` times with `retryDelay` between attempts, then the case is `TARGET_FAILED`. A timeout or an interrupt is never retried. A target that returns null counts as a failure.
+- A target that exceeds `perCaseTimeout` gives `TIMED_OUT` and its thread is interrupted. The runner cannot kill a thread that ignores interrupts. If the call is still running 1 second after the interrupt it is counted as abandoned and it is no longer counted against `concurrency`. When abandoned calls exceed `maxAbandonedCalls`, no new case is started, every case that has not started is `SKIPPED_BUDGET` and the run finishes normally. Metric calls that ignore their time box are counted the same way.
+- A metric that throws, returns null, returns a result with another name or exceeds `perMetricTimeout` becomes an `ERROR` result. The other metrics still run and the case stays `COMPLETED` with its output.
+- After `totalTimeout` the remaining cases are `SKIPPED_BUDGET` with no output, no metric results and a zero duration. Running cases finish within their own time boxes.
+- If the calling thread is interrupted, the run is cancelled, the interrupt flag is restored and a `ServiceException` (`EVAL_E016`) is thrown. The runner creates daemon threads named `eval-runner-*` and always shuts them down.
+- `errorMessage` and the error reasons written by the runner contain the exception class name and the attempt count or timeout only, never an exception message, so they cannot leak the question or the answer.
+
+### Run config
+
+An `EvalRun` carries a config map that ends up in run files and reports. It contains exactly these entries: `runner.concurrency`, `runner.perCaseTimeoutMs`, `runner.perMetricTimeoutMs`, `runner.totalTimeoutMs`, `runner.maxAttempts`, `runner.maxCases`, `runner.includeTags` (sorted, comma separated), `runner.selectedCases`, `runner.abandonedCalls`, `runner.maxJudgeCalls`, `runner.judgeCallsUsed`, `dataset.caseCount`, `metrics` (sorted names, comma separated), `library.version`, one `label.<key>` per label, one `metric.<metricName>.<key>` per entry of `Metric.runConfig()` and one `target.<key>` per entry of `EvalTarget.describe()`.
+
+`library.version` is the implementation version from the library jar. It is `unknown` when the classes do not come from a jar with that manifest entry, for example from a class directory.
+
+Label, metric and target keys are split into words on non-alphanumeric characters and camelCase boundaries, and a key is rejected when any word is one of `key`, `secret`, `token`, `password`, `passwd`, `authorization`, `credential`, `credentials`, `apikey` or `bearer`. So `api-key` and `db_password` are rejected, while `max-tokens`, `monkey` and `top-k` are allowed. Values are at most 200 characters. A run with a rejected entry does not start, and the message names the key. This check is only a safety net. A metric or target must only report known, non-secret settings.
+
+If `describe()` has a `model` entry equal to the `judge` entry of a metric, the runner logs one warning, because a model should not grade its own answers.
+
 ## Run store
 
-A run is saved as a `StoredRun`, a copy of an `EvalRun` that keeps only safe fields: ids, statuses, durations, answer length, latency, number of retrieved chunks and the metric results. It never contains the question, the answer or any chunk text. `StoredRun.from(evalRun)` does the copy.
+A run is saved as a `StoredRun`, a copy of an `EvalRun` that keeps only safe fields: ids, statuses, durations, answer length, latency, number of retrieved chunks and the metric results. `StoredRun.from(evalRun)` does the copy.
 
 `FileRunStore(root, StoreLimits)` keeps one file per run, named `run-<runId>.json`, in the root directory. The root is created when missing and must not be a regular file. Other files in the directory are ignored. Every path is resolved to its real path and must stay inside the root, so a symbolic link that leaves the root is rejected.
 
 File format (`formatVersion` 1): a JSON object with `formatVersion`, `runId`, `datasetName`, `datasetFingerprint`, `targetName`, `startedAt`, `finishedAt`, `config` and `cases`. Each case has `caseId`, `status`, `errorMessage`, `durationMs`, `answered`, `answerChars`, `latencyMs`, `retrievedCount` and `metricResults` (`metricName`, `status`, `score`, `reason`). Fields are written in a fixed order with a 2 space indent and LF line endings on every OS. Instants are ISO-8601 UTC strings, durations are integer milliseconds and scores use the shortest form that reads back to the same double.
 
-Reading is strict, like the dataset loader: an unknown `formatVersion`, an unknown or duplicate field, a wrong type (a string where a number is expected), trailing content, invalid UTF-8, a document that is too deep or too large, all fail with an error that names the file and, for a syntax error, the line and column. A byte order mark is accepted. Everything read goes through the record constructors again, so a hand edited file cannot create an invalid run.
+Reading is strict, like the dataset loader: an unknown `formatVersion`, an unknown or duplicate field, a wrong type (a string where a number is expected), a number that is out of range, trailing content, invalid UTF-8, a document that is too deep or too large, all fail with an error that names the file and, for a syntax error, the line and column. A byte order mark is accepted. Everything read goes through the record constructors again, so a hand edited file cannot create an invalid run.
 
 | Limit | Default |
 | --- | --- |
@@ -329,17 +249,17 @@ Reading is strict, like the dataset loader: an unknown `formatVersion`, an unkno
 | `maxRuns` (most run files `list` and `latest` will scan) | 10000 |
 | `maxNestingDepth` | 20 |
 
-Labels and config values are free text copied from your `RunConfig`, they are limited to 200 characters but not checked for content. Do not put secrets in them. Config keys that look like a credential are rejected.
-
 Files are never overwritten. `save` fails when the run id already exists, also on a case insensitive file system where two ids differ only by case. It writes a temporary file in the same directory, flushes it to disk and moves it into place without replacing anything. `list` is sorted by start time then run id and fails, naming the file, when one file is corrupt. `latest(datasetName, targetName)` returns the run that started last, ties go to the greater run id.
 
 Concurrency: one process is protected by a lock, so two threads saving the same run id never both succeed. Two separate processes saving the same run id at the same moment can overwrite each other on Linux, because the JDK checks for the file and then renames it. On Windows the move itself refuses to replace an existing file. In CI give every run a unique run id, for example with the build number.
 
-Baseline workflow:
+### Baseline workflow
 
-1. Run the evaluation and save it to an output directory outside `src`.
-2. Copy the run file you accept as the baseline into `src/test/resources/eval-baselines` and commit it.
-3. In a test, run again, load the baseline and compare.
+1. Run the evaluation once with a fixed run id (`RunConfig.withRunId`) and save it to an output directory outside `src`. Run ids must be valid names.
+2. Copy the run file you accept as the baseline into `src/test/resources/eval-baselines/` and commit it. With `EvalSuite` the file is `target/eval-runs/run-<id>.json`.
+3. In a test, run again and compare. With `EvalSuite`, set the id in the request: `request.withBaselineRunId("support-baseline")`.
+
+Without the suite, load and compare the runs yourself:
 
 ```java
 EvalRun run = new EvalRunner().run(dataset, target, metrics, RunConfig.defaults());
@@ -353,8 +273,6 @@ Comparison comparison = RunComparator.compare(
 assertThat(comparison.passesGate()).as(comparison.violations().toString()).isTrue();
 ```
 
-Run ids must be valid names (letters, digits, `.`, `_`, `-`, at most 100 characters). Give the baseline run a fixed id with `RunConfig.withRunId`.
-
 ## Regression gate
 
 `RunSummary.of(storedRun)` gives the case counts per status and one `MetricAggregate` per metric. For each metric:
@@ -366,15 +284,15 @@ Run ids must be valid names (letters, digits, `.`, `_`, `-`, at most 100 charact
 
 A metric is `REGRESSED` when its mean score or pass rate drops by more than the tolerance, or when it has more errors than before. A case change is a `REGRESSION` (passed to failed or error, or a case that no longer completes), a `FIX`, a `SCORE_DROP` or `SCORE_GAIN` beyond the tolerance, or `COVERAGE_LOST` and `COVERAGE_GAINED` (scored to skipped and back). One metric result gives at most one change, a status change wins over a score change. `maxCaseRegressions` (default 0) allows that many `REGRESSION` changes, every `SCORE_DROP` is a violation. `minPassRate` sets an absolute floor on the candidate for a metric.
 
+The violation for too many case regressions lists them as `caseId/metricName`, sorted by case id and metric name, for example `case regressions: 2 (allowed 0): refund-1/answer_contains, refund-2`. An entry without a metric name is a case that no longer completes. At most 10 entries are listed, followed by `and N more`. The violation for a regressed metric gives the baseline and candidate mean score and pass rate, the error counts and the tolerance.
+
 Tolerance is the allowed drop before something counts as a regression, with a small epsilon. Use 0.0 for the deterministic metrics. Use 0.25 for the judge metrics that score 1 to 5, because one rubric step is 0.25 and a single step of judge noise should not fail the build. Set it per metric with `withMetricTolerance`.
 
 A metric is `NOT_COMPARABLE` when its config values `metric.<name>.promptVersion`, `metric.<name>.judge` or `metric.<name>.repeats` differ between the two runs, and a key missing on one side counts as different. A different judge model, prompt or number of repeats changes what a score means, so comparing the two would measure the judge and not your system. A not comparable metric gets no regression verdict and no case changes, and fails the gate unless `failOnIncomparable` is false. Record a new baseline after changing the judge.
 
-Version 0.1 has no statistical significance test. It compares paired cases and relies on tolerances and on `repeats` to smooth judge noise. With a small dataset a small tolerance will flag noise, and a large tolerance can hide a real drop.
-
 ## Reports
 
-Reports are pure functions that return strings. They take only a `StoredRun` based `RunSummary` and a `Comparison`, never an `EvalRun`, so no question, answer or chunk text can reach them.
+Reports are pure functions that return strings. They take only a `StoredRun` based `RunSummary` and a `Comparison`, never an `EvalRun`.
 
 | Report | Content |
 | --- | --- |
@@ -411,12 +329,198 @@ A CI step can post the Markdown file as a pull request comment with the GitHub C
     fi
 ```
 
-Safety rules:
+Escaping and limits:
 
-- Reports never contain questions, answers or chunk text.
 - In Markdown every dynamic value (run ids, dataset and target names, case ids, metric names, config keys and values, violations) is shown inside a code span. The fence is longer than any backtick run in the text and a pipe in a table cell is escaped.
-- Control characters, line and paragraph separators, bidirectional controls and zero width characters are replaced by a space in every report, and every field is cut at `maxFieldChars`.
+- Control characters, line and paragraph separators, bidirectional controls and zero width characters in these values are replaced by a space. Every value is cut at `maxFieldChars`, a violation at 1900 characters.
 - The Markdown has no images, links or mentions. The only raw HTML is the marker comment and the static `<details>` and `<summary>` tags.
 - The Markdown size is capped at `maxChars`.
 
-**Warning: labels and config values are free text from the caller. They appear in reports when `includeRunConfig` is true and in the config changes table. Never put secrets in them.**
+## JUnit and Spring Boot
+
+The starter auto-configures an `EvalSuite`. `EvalSuite.evaluate` loads the dataset, runs it, saves the run file, compares it with the baseline when the request has a `baselineRunId`, checks the thresholds and renders the reports. The gate fails when there is any violation. An exhausted judge budget is a metric error and fails the gate on purpose (`maxMetricErrors` is 0 by default). A threshold on a metric that has no pass rate or mean (all skipped, or absent) is a violation, never a silent pass.
+
+`Thresholds`: `minPassRate` and `minMeanScore` per metric name (0 to 1), `maxIncompleteCases` (cases that are `TARGET_FAILED`, `TIMED_OUT` or `SKIPPED_BUDGET`, default 0) and `maxMetricErrors` (default 0).
+
+`EvalAssertions.assertGate(outcome)` throws an `AssertionFailedError` whose message is the console report, cut at 20000 characters. `EvalAssertions.assertThat(outcome)` gives `passesGate()`, `metricPassRateAtLeast`, `metricMeanScoreAtLeast`, `noCaseRegressions()`, `noMetricErrors()` and `allCasesCompleted()`. Their messages are built from run ids, case ids, metric names, numbers and violations.
+
+Files written by the suite, with `<id>` the run id: the run file `run-<id>.json` in the store directory, and `eval-report-<id>.md` and `eval-report-<id>.json` in the report directory. The run id part is cut so that the file name has at most 100 characters. The JSON report is only written when there is a baseline comparison.
+
+The baseline directory is opened read-only: a missing directory or file is an error and a run never creates the folder. In CI use a unique run id for every run, because a run id that already exists is never overwritten.
+
+Setting `eval-framework.judge.identifier` creates a `JudgeModel` bean that uses the application's default `ChatClient.Builder`. The context starts without a builder, and the first judge call then fails with a clear error. To use a different judge model than the one your application uses, define your own `JudgeModel` bean, it replaces the auto-configured one.
+
+## Example with the RAG engine
+
+`eval-framework-rag-adapter` turns a `RagService` from [spring-ai-rag-engine](https://github.com/agentworkshq/spring-ai-rag-engine) into an `EvalTarget`. It is not part of the starter, add it yourself:
+
+```java
+RagEngineTarget target = RagEngineTarget.of(ragService, RagTargetOptions.defaults().withTopK(3));
+```
+
+The tenant, the source filter and `topK` come from `RagTargetOptions`, never from a dataset case.
+
+### Adapter requirements
+
+- `rag-engine.answer.cite-sources` must be `true`, which is the default. `RagEngineTarget` builds the retrieved chunks from the citations of `RagAnswer`. With `false` nothing is retrieved, so the retrieval metrics and the `citation` metric fail, `faithfulness` fails with "no retrieved context" and `citation_grounded` is skipped.
+- Source filter entries are rag-engine source names, not file names.
+- The documents must be ingested for the tenant in `RagTargetOptions` before the run.
+
+A citation carries a snippet of at most 200 characters, not the whole chunk. Judge metrics such as faithfulness therefore judge against truncated context and can report supported claims as unsupported.
+
+### The offline sample
+
+`eval-framework-sample` is a complete offline example with fake embedding and chat models, so it needs no model server, API key or Docker. Install rag-engine first, see [Building from source](#building-from-source), then run:
+
+```bash
+./mvnw -pl eval-framework-sample -am verify
+```
+
+`GoldenRagEvalTest` runs 15 golden cases against the real ingestion and retrieval code and compares each run with a committed baseline. It shows that:
+
+- the healthy target passes the gate and reproduces the baseline scores
+- a target limited to the troubleshooting document fails the gate, and the report names the metrics and cases that got worse
+- the run file and the reports contain no question, answer or document text
+- two runs of the same target give the same results
+
+The scores say nothing about the quality of a real system: the fake embedding model only matches shared words, and the fake chat model repeats the first sentence of the best chunk.
+
+To run the same dataset against real models, outside the offline test configuration:
+
+- add a Spring AI model starter and a vector store, and leave out the fake `EmbeddingModel`, `VectorStore` and `ChatClient.Builder` beans
+- set the provider properties, for Ollama `spring.ai.ollama.base-url`, `spring.ai.ollama.chat.model` and `spring.ai.ollama.embedding.model`
+- retune `rag-engine.chunking.chunk-size`, `rag-engine.chunking.overlap`, `rag-engine.retrieval.top-k` and `rag-engine.retrieval.similarity-threshold`, the sample values fit only the fake embedding model
+- record the model names with `RagTargetOptions.withDescription` so that they show up in run files
+- replace the `mustContain` expectations if your model paraphrases, record a new baseline and loosen the thresholds to what your models reliably reach
+- to add judge metrics, set `eval-framework.judge.identifier` to a model other than the one under test
+
+## Configuration reference
+
+Relative paths are resolved against the working directory. None of the directories is created when the application starts. The `runner` properties apply to a run only when you build its config from them with `properties.runner().toRunConfig()`, `EvalRequest.defaults()` does not read them.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `eval-framework.enabled` | boolean | `true` | `false` creates no beans |
+| `eval-framework.dataset.root` | String | `src/test/resources/eval-datasets` | directory that dataset paths are relative to |
+| `eval-framework.dataset.max-file-bytes` | int | `5242880` | largest dataset file |
+| `eval-framework.dataset.max-cases` | int | `1000` | most cases in one dataset file |
+| `eval-framework.baseline.dir` | String | `src/test/resources/eval-baselines` | directory of the committed baseline run files, only read |
+| `eval-framework.store.enabled` | boolean | `true` | `false` creates no `RunStore`, so the suite saves no run file |
+| `eval-framework.store.dir` | String | `target/eval-runs` | directory for run files |
+| `eval-framework.report.enabled` | boolean | `true` | `false` creates no `ReportWriter`, so the suite writes no report files |
+| `eval-framework.report.dir` | String | `target/eval-reports` | directory for report files |
+| `eval-framework.runner.concurrency` | int | `1` | most target calls at once, 1 to 16 |
+| `eval-framework.runner.per-case-timeout` | Duration | `60s` | time box for one target call |
+| `eval-framework.runner.per-metric-timeout` | Duration | `60s` | time box for one metric call |
+| `eval-framework.runner.total-timeout` | Duration | `30m` | after it no new case is started |
+| `eval-framework.runner.max-attempts` | int | `1` | target attempts per case, 1 to 5 |
+| `eval-framework.runner.max-cases` | int | `1000` | most selected cases in one run, 1 to 100000 |
+| `eval-framework.runner.max-judge-calls` | int | `500` | most judge calls in one run, 0 to 100000 |
+| `eval-framework.judge.identifier` | String | none | judge model name, creates a `JudgeModel` bean |
+
+The same properties as YAML with their defaults:
+
+```yaml
+eval-framework:
+  enabled: true
+  dataset:
+    root: src/test/resources/eval-datasets
+    max-file-bytes: 5242880
+    max-cases: 1000
+  baseline:
+    dir: src/test/resources/eval-baselines
+  store:
+    enabled: true
+    dir: target/eval-runs
+  report:
+    enabled: true
+    dir: target/eval-reports
+  runner:
+    concurrency: 1
+    per-case-timeout: 60s
+    per-metric-timeout: 60s
+    total-timeout: 30m
+    max-attempts: 1
+    max-cases: 1000
+    max-judge-calls: 500
+  judge:
+    identifier:   # optional, creates a JudgeModel bean
+```
+
+## Security and privacy
+
+Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
+
+### What the library does
+
+- Run files and reports never hold question, answer or chunk text. `StoredRun` copies only safe fields, and reports are built from it.
+- The library sends case text only to your target and, for judge metrics, to the judge model. In memory it is also available to your metrics, your `RunListener` and any code that holds the `EvalRun`.
+- Questions, answers and chunk text are never logged by the library. Exception messages from targets, metrics and judges are not copied into results, only class names.
+- Judge prompts put every piece of case text between markers with a random nonce, tell the judge to ignore instructions inside them and accept only a strict JSON reply, see [LLM judge metrics](#llm-judge-metrics). `SpringAiEvaluatorMetric` is the exception.
+- Paths are confined. Datasets are read only from inside the dataset directory, the baseline directory is only read, and run files and reports are written only inside their configured directories. Symbolic links that leave a directory are rejected.
+- Limits apply to dataset files, case fields, run files, judge prompts and replies, regular expressions, reports, run time, cases per run and judge calls per run.
+- The `toString` methods of the types that hold case, answer, chunk or prompt text print ids, lengths and counts instead of the text.
+- Config keys that look like a credential and judge identifiers that look like a credential or a URL are rejected.
+- The library never calls `System.exit`.
+
+### What the library cannot protect against
+
+- What a target, judge or model provider does with the data it receives.
+- Prompt injection as a whole. Delimiters and strict parsing make it harder, a judge model can still be influenced by the text it grades.
+- Your own code. A custom target, metric or listener can log or write anything. The reason, metric name and run config entries of a custom metric, and the name and `describe()` entries of a target, are copied into run files and reports as they are.
+- Secrets that you put into labels, config values, descriptions, names, case ids or tags. They are free text, appear in run files, and appear in reports in the config changes table and, when `includeRunConfig` is true, in the run config. Never put secrets in them.
+- Printing of free text by types that carry your settings or stored results, for example `RunConfig`, `StoredRun`, `Comparison`, `MetricResult` and `RagTargetOptions`.
+- Dataset files. They hold your questions and expected answers in plain text. Do not commit datasets that contain personal data.
+- Exception causes. They can contain fragments of dataset content, for example a key name, and absolute paths. Do not send stack traces to untrusted places.
+- Logging by other libraries, such as Spring AI or an HTTP client, which can include prompts when configured to.
+- Anyone who can change the committed baseline, the dataset or the test code. Run files are not signed, so they decide what the gate accepts.
+- A process with write access to the configured directories that changes files while they are being checked and opened.
+- Code that ignores interrupts. The target and metrics run inside your JVM without a sandbox.
+
+Run files and reports go under `target/` by default so they are not committed.
+
+## Known limitations
+
+- No statistical significance test. The gate compares paired cases and relies on tolerances and on `repeats`. With a small dataset a small tolerance will flag noise, and a large tolerance can hide a real drop.
+- LLM judges are noisy. Use `repeats` and a tolerance.
+- The auto-configured judge uses the default `ChatClient.Builder` unless you supply your own `JudgeModel`.
+- The regular expression deadline is a safety net, not a hard limit.
+- Abandoned calls cannot be killed.
+- `totalTimeout` only stops new cases from starting. Running cases, including their retry delays, can end after it.
+- The file run store protects only one process on Linux.
+- Run files are not tenant scoped.
+- Runs are synchronous, the caller waits for the whole run.
+- The RAG engine adapter sees only snippets of at most 200 characters.
+- Results are only as good as the dataset.
+
+## Roadmap
+
+Not done yet:
+
+- a JPA run store
+- an HTML report
+- more adapters, such as one for a plain `ChatClient`
+- changes in rag-engine that would remove the snippet limit of the adapter
+- publishing to Maven Central
+
+## Building from source
+
+You need Java 21. The rag-engine artifacts are not on Maven Central yet, so install them into your local Maven repository first. This is needed for any build from the root of this repository:
+
+```bash
+git clone https://github.com/agentworkshq/spring-ai-rag-engine.git
+cd spring-ai-rag-engine
+./mvnw install -DskipTests
+```
+
+Then, in this repository:
+
+```bash
+./mvnw verify
+```
+
+`./mvnw install` also puts the evaluation framework into your local Maven repository, so that other projects can use it.
+
+## License
+
+Apache License, Version 2.0, see [LICENSE](LICENSE).

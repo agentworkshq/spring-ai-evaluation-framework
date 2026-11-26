@@ -2,6 +2,7 @@ package dev.agentworkshq.eval.core.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import dev.agentworkshq.eval.core.exception.ValidationException;
 import java.time.Duration;
@@ -172,12 +173,17 @@ class RunModelTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"api-key", "apiKey", "APIKey", "API_KEY", "apikey", "client-secret", "Token", "db_password",
-        "x.AUTHORIZATION", "passwd", "myCredentials", "credential", "bearer-value"})
+        "x.AUTHORIZATION", "passwd", "myCredentials", "credential", "bearer-value", "OPENAIKey", "clientSECRETValue"})
     void evalRunRejectsSecretLikeKeysWithoutEchoingValue(String key) {
         assertThatThrownBy(() -> run(Map.of(key, "VALUE-MUST-NOT-LEAK"), List.of()))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining(key)
                 .hasMessageNotContaining("VALUE-MUST-NOT-LEAK");
+    }
+
+    @Test
+    void theCredentialCheckStaysFastForVeryLongKeys() {
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () -> EvalRun.requireSafeConfigKey("A".repeat(200_000)));
     }
 
     @ParameterizedTest

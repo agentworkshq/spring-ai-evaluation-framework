@@ -17,9 +17,19 @@ public final class JudgePromptBuilder {
                 throw new ValidationException(ErrorMessages.EVAL_E010, "invalid prompt section");
             }
         }
+
+        @Override
+        public String toString() {
+            return "Section[name=" + name + ", textLength=" + text.length() + ", maxChars=" + maxChars + "]";
+        }
     }
 
     public record Prompt(String userPrompt, boolean truncated) {
+
+        @Override
+        public String toString() {
+            return "Prompt[length=" + (userPrompt == null ? 0 : userPrompt.length()) + ", truncated=" + truncated + "]";
+        }
     }
 
     private final NonceSource nonces;

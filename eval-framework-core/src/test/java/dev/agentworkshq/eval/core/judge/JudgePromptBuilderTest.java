@@ -31,6 +31,16 @@ class JudgePromptBuilderTest {
     }
 
     @Test
+    void toStringNeverPrintsTheText() {
+        Section section = new Section("ANSWER", "SECRET-MARKER-TEXT", 100);
+        Prompt prompt = fixed().build(List.of(section));
+
+        assertThat(section.toString()).doesNotContain("SECRET-MARKER-TEXT").contains("ANSWER", "textLength=18");
+        assertThat(prompt.toString()).doesNotContain("SECRET-MARKER-TEXT")
+                .contains("length=" + prompt.userPrompt().length(), "truncated=false");
+    }
+
+    @Test
     void wrapsEachSectionInMarkersWithTheNonce() {
         Prompt prompt = fixed().build(List.of(new Section("QUESTION", "why?", 100), new Section("ANSWER", "because", 100)));
 

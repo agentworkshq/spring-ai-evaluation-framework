@@ -18,7 +18,9 @@ import dev.agentworkshq.eval.core.model.CaseStatus;
 import dev.agentworkshq.eval.core.model.MetricResult;
 import dev.agentworkshq.eval.core.store.StoredCase;
 import dev.agentworkshq.eval.core.store.StoredRun;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -370,8 +372,43 @@ class RunComparatorTest {
         assertThat(RunComparator.compare(base, two, config).passesGate()).isTrue();
         Comparison c = RunComparator.compare(base, three, config);
         assertThat(c.passesGate()).isFalse();
-        assertThat(c.violations()).containsExactly("case regressions: 3 (allowed 2)");
+        assertThat(c.violations()).containsExactly("case regressions: 3 (allowed 2): a/m, b/m, c/m");
         assertThat(compare(base, two).passesGate()).isFalse();
+    }
+
+    @Test
+    void tenCaseRegressionsAreAllListed() {
+        Comparison c = regressed(10);
+
+        assertThat(c.violations()).first().asString().isEqualTo("case regressions: 10 (allowed 0): "
+                + "c00/m, c01/m, c02/m, c03/m, c04/m, c05/m, c06/m, c07/m, c08/m, c09/m");
+    }
+
+    @Test
+    void theEleventhCaseRegressionIsOnlyCounted() {
+        Comparison c = regressed(11);
+
+        assertThat(c.violations()).first().asString().isEqualTo("case regressions: 11 (allowed 0): "
+                + "c00/m, c01/m, c02/m, c03/m, c04/m, c05/m, c06/m, c07/m, c08/m, c09/m and 1 more");
+    }
+
+    @Test
+    void caseRegressionsAreSortedByCaseIdThenMetric() {
+        StoredRun base = run("base", done("b", pass("n", 1.0), pass("m", 1.0)), done("a-1", pass("m", 1.0)),
+                done("a", pass("m", 1.0)));
+        StoredRun cand = run("cand", done("a", fail("m", 0.0)), failedTarget("a-1", "x"),
+                done("b", fail("n", 0.0), err("m")));
+
+        assertThat(compare(base, cand).violations()).first().asString()
+                .isEqualTo("case regressions: 4 (allowed 0): a/m, a-1, b/m, b/n");
+    }
+
+    private static Comparison regressed(int cases) {
+        List<String> ids = IntStream.range(0, cases).mapToObj(i -> String.format("c%02d", i)).toList();
+        StoredRun base = run("base", ids.stream().map(id -> done(id, pass("m", 1.0))).toArray(StoredCase[]::new));
+        StoredRun cand = run("cand", ids.reversed().stream().map(id -> done(id, fail("m", 0.0)))
+                .toArray(StoredCase[]::new));
+        return compare(base, cand);
     }
 
     @Test

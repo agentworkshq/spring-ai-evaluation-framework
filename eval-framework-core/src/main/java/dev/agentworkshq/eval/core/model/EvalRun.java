@@ -54,7 +54,8 @@ public record EvalRun(
     }
 
     private static boolean looksLikeSecret(String key) {
-        String spaced = key.replaceAll("([a-z0-9])([A-Z])", "$1 $2").replaceAll("([A-Z]+)([A-Z][a-z])", "$1 $2");
+        // lookarounds keep this linear, keys from run files can be very long
+        String spaced = key.replaceAll("([a-z0-9])([A-Z])", "$1 $2").replaceAll("(?<=[A-Z])(?=[A-Z][a-z])", " ");
         for (String segment : spaced.split("[^A-Za-z0-9]+")) {
             if (SECRET_WORDS.contains(segment.toLowerCase(Locale.ROOT))) {
                 return true;

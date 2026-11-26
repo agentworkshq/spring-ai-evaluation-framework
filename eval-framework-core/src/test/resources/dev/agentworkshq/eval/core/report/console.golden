@@ -16,7 +16,7 @@ Metrics
 +--------------+--------+--------+-------+---------+-------+-----------+---------------+--------+----------------+
 
 GATE: FAILED
-  - case regressions: 2 (allowed 0)
+  - case regressions: 2 (allowed 0): a/m_reg, d
   - metric m_reg regressed: mean 0.6667 to 0.5000, pass rate 0.6667 to 0.5000, errors 0 to 0, tolerance 0.0000
   - metric m_score regressed: mean 0.9000 to 0.7000, pass rate 1.0000 to 1.0000, errors 0 to 0, tolerance 0.0000
   - score drop: case b metric m_score 0.9000 to 0.5000

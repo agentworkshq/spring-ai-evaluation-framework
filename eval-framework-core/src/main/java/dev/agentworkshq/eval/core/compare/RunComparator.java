@@ -9,6 +9,7 @@ import dev.agentworkshq.eval.core.model.MetricStatus;
 import dev.agentworkshq.eval.core.store.StoredCase;
 import dev.agentworkshq.eval.core.store.StoredRun;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -20,6 +21,7 @@ import java.util.TreeSet;
 public final class RunComparator {
 
     private static final double EPSILON = 1e-9;
+    private static final int MAX_LISTED = 10;
     private static final List<String> COMPARABILITY_KEYS = List.of("promptVersion", "judge", "repeats");
 
     private RunComparator() {
@@ -162,9 +164,15 @@ public final class RunComparator {
             Map<String, MetricAggregate> candAgg,
             List<String> missingCases) {
         List<String> out = new ArrayList<>();
-        long regressions = changes.stream().filter(c -> c.kind() == ChangeKind.REGRESSION).count();
-        if (regressions > config.maxCaseRegressions()) {
-            out.add("case regressions: " + regressions + " (allowed " + config.maxCaseRegressions() + ")");
+        List<String> regressions = changes.stream()
+                .filter(c -> c.kind() == ChangeKind.REGRESSION)
+                .sorted(Comparator.comparing(CaseChange::caseId)
+                        .thenComparing(CaseChange::metricName, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .map(c -> c.metricName() == null ? c.caseId() : c.caseId() + "/" + c.metricName())
+                .toList();
+        if (regressions.size() > config.maxCaseRegressions()) {
+            out.add("case regressions: " + regressions.size() + " (allowed " + config.maxCaseRegressions() + "): "
+                    + listed(regressions));
         }
         for (MetricComparison m : metrics) {
             if (m.verdict() == MetricVerdict.REGRESSED) {
@@ -204,13 +212,17 @@ public final class RunComparator {
                 }
             }
             if (!missingCases.isEmpty()) {
-                int shown = Math.min(missingCases.size(), 10);
-                String more = missingCases.size() > shown ? " and " + (missingCases.size() - shown) + " more" : "";
                 out.add("coverage lost: " + missingCases.size() + " cases missing in the candidate: "
-                        + String.join(", ", missingCases.subList(0, shown)) + more);
+                        + listed(missingCases));
             }
         }
         return out;
+    }
+
+    private static String listed(List<String> entries) {
+        int shown = Math.min(entries.size(), MAX_LISTED);
+        String more = entries.size() > shown ? " and " + (entries.size() - shown) + " more" : "";
+        return String.join(", ", entries.subList(0, shown)) + more;
     }
 
     private static List<ConfigChange> configChanges(StoredRun baseline, StoredRun candidate) {

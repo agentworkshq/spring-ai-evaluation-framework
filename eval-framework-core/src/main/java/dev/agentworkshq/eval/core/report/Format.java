@@ -9,7 +9,8 @@ import java.util.Locale;
 
 final class Format {
 
-    static final int VIOLATION_CHARS = 300;
+    // room for the longest case listing of a violation: ten case ids with their metric names
+    static final int VIOLATION_CHARS = 1900;
     static final String NA = "n/a";
 
     private static final List<ChangeKind> KIND_ORDER = List.of(ChangeKind.REGRESSION, ChangeKind.SCORE_DROP,

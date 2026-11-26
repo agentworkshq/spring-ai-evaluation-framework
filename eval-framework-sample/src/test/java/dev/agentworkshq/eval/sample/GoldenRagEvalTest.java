@@ -104,6 +104,9 @@ class GoldenRagEvalTest {
             assertThat(outcome.violations()).anyMatch(v -> v.startsWith("metric " + metric + " regressed"));
             assertThat(outcome.violations()).anyMatch(v -> v.startsWith("pass rate of metric " + metric + " is"));
         }
+        assertThat(outcome.violations()).anyMatch(v -> v.startsWith("case regressions: ")
+                && v.contains(": firmware-01/answer_contains, firmware-01/citation, ")
+                && v.matches(".* and \\d+ more"));
         assertThat(outcome.violations()).contains("coverage lost: case warranty-01 metric citation_grounded");
         assertThat(outcome.comparison().caseChanges())
                 .filteredOn(c -> c.kind() == ChangeKind.REGRESSION)

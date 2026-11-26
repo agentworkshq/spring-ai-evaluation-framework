@@ -217,8 +217,8 @@ class ReportsTest {
         String console = ConsoleReport.render(RunSummary.of(cand), c, options);
         String markdown = MarkdownReport.render(RunSummary.of(cand), c, options);
 
-        assertThat(console).contains("... and 7 more\n").contains("case-0002").doesNotContain("case-0003");
-        assertThat(markdown).contains("... and 7 more\n").contains("`case-0002`").doesNotContain("case-0003");
+        assertThat(console).contains("... and 7 more\n").contains("| case-0002 ").doesNotContain("| case-0003 ");
+        assertThat(markdown).contains("... and 7 more\n").contains("| `case-0002` |").doesNotContain("| `case-0003` |");
         assertThat(ConsoleReport.render(RunSummary.of(cand), c, OPTIONS.withMaxCaseRows(10))).doesNotContain("more\n");
     }
 

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class RunCodecTest {
 
@@ -139,6 +140,18 @@ class RunCodecTest {
                 .matches("Invalid run file: x\\.json \\(malformed JSON, line \\d+, column \\d+\\)");
         assertThat(rejected("").getMessage()).startsWith("Invalid run file: x.json");
         assertThat(rejected("[]").getMessage()).startsWith("Invalid run file: x.json");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"formatVersion", "score", "durationMs"})
+    void rejectsHugeNumbersWithoutEchoingThem(String field) {
+        String huge = "9".repeat(400);
+        String json = GOLDEN.replaceFirst("\"" + field + "\": [0-9.]+", "\"" + field + "\": " + huge);
+
+        assertThat(json).contains(huge);
+        BaseException e = rejected(json);
+        assertThat(e.getMessage()).doesNotContain("999");
+        assertThat(e.getCause()).isNull();
     }
 
     @Test

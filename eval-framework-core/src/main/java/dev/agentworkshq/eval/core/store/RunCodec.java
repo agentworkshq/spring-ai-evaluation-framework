@@ -141,6 +141,9 @@ final class RunCodec {
         }
         try {
             return build(root, file);
+        } catch (JacksonException e) {
+            // the Jackson message and cause repeat the value, so neither is kept
+            throw invalid(file, ": a number is out of range");
         } catch (ValidationException e) {
             if (e.getErrorMessage() == ErrorMessages.EVAL_E019) {
                 throw e;

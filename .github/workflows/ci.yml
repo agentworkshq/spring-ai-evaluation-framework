@@ -15,7 +15,7 @@ concurrency:
 
 env:
   # Replace with a commit SHA or a tag once rag-engine is released.
-  RAG_ENGINE_REF: main
+  RAG_ENGINE_REF: <yahan-hash-paste-karo>
 
 jobs:
   build:

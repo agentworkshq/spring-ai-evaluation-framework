@@ -1,6 +1,6 @@
 # Security Policy
 
-Report vulnerabilities privately by email to oss@agentworkshq.dev. Please do not open a public issue for a security problem.
+Report vulnerabilities privately by email to ayshriv2k3@gmail.com. Please do not open a public issue for a security problem.
 
 Only the latest 0.x release is supported.
 

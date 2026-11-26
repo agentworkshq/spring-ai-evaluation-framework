@@ -1,0 +1,20 @@
+rag-engine:
+  sources:
+    - name: docs
+      type: filesystem
+      path: docs
+      include:
+        - "**/*.txt"
+    # source filters work on source names, so the degraded target needs a source of its own
+    - name: troubleshooting.txt
+      type: filesystem
+      path: docs
+      include:
+        - "**/troubleshooting.txt"
+  chunking:
+    strategy: recursive
+    chunk-size: 160
+    overlap: 0
+  retrieval:
+    top-k: 3
+    similarity-threshold: 0.25

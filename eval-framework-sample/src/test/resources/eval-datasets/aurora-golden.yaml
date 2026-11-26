@@ -1,0 +1,73 @@
+name: aurora-golden
+cases:
+  - id: setup-01
+    question: How do I set up the hub with the supplied USB-C cable?
+    expectedSources: [getting-started.txt]
+    mustContain: [status light pulses blue]
+    tags: [setup]
+  - id: setup-02
+    question: How many paired devices can each hub control?
+    expectedSources: [getting-started.txt]
+    mustContain: [up to 50 paired devices]
+    tags: [setup]
+  - id: setup-03
+    question: Does the hub support 5 GHz Wi-Fi networks?
+    expectedSources: [getting-started.txt]
+    mustContain: [does not support 5 GHz]
+    tags: [setup]
+  - id: setup-04
+    question: How do I pair a new device?
+    expectedSources: [getting-started.txt]
+    mustContain: [pairing button for three seconds]
+    tags: [setup]
+  - id: troubleshooting-01
+    question: How do I reset the device?
+    expectedSources: [troubleshooting.txt]
+    mustContain: [reset button on the back]
+    tags: [troubleshooting]
+  - id: troubleshooting-02
+    question: Why is the status light flashing orange?
+    expectedSources: [troubleshooting.txt]
+    mustContain: [cannot reach your Wi-Fi network]
+    tags: [troubleshooting]
+  - id: troubleshooting-03
+    question: What should I do if a paired device shows as offline?
+    expectedSources: [troubleshooting.txt]
+    mustContain: [replace its battery]
+    tags: [troubleshooting]
+  - id: warranty-01
+    question: How long is the limited warranty and when does it start?
+    expectedSources: [warranty-and-support.txt]
+    mustContain: [2 year limited warranty]
+    tags: [warranty]
+  - id: warranty-02
+    question: How do I make a warranty claim?
+    expectedSources: [warranty-and-support.txt]
+    mustContain: [attach your order number]
+    tags: [warranty]
+  - id: warranty-03
+    question: Does the warranty cover water damage?
+    expectedSources: [warranty-and-support.txt]
+    mustContain: [does not cover water damage]
+    tags: [warranty]
+  - id: firmware-01
+    question: When do firmware updates install?
+    expectedSources: [warranty-and-support.txt]
+    mustContain: [install automatically at night]
+    tags: [firmware]
+  - id: out-of-scope-01
+    question: What will the weather be like in Paris tomorrow?
+    expectNoAnswer: true
+    tags: [out-of-scope]
+  - id: out-of-scope-02
+    question: Who won the football world cup final?
+    expectNoAnswer: true
+    tags: [out-of-scope]
+  - id: out-of-scope-03
+    question: Can you recommend a recipe for tomato soup?
+    expectNoAnswer: true
+    tags: [out-of-scope]
+  - id: out-of-scope-04
+    question: What is the capital city of Australia?
+    expectNoAnswer: true
+    tags: [out-of-scope]

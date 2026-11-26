@@ -117,6 +117,50 @@ The judge bean (`eval-framework.judge.identifier`) uses the application's defaul
 
 Run files and reports go under `target/` by default so they are not committed. The question, answer and chunk text are never written to them. Datasets with real data must not be committed: a dataset file contains your questions and expected answers in plain text.
 
+## Example: evaluating the RAG engine
+
+`eval-framework-rag-adapter` turns a `RagService` from [spring-ai-rag-engine](https://github.com/agentworkshq/spring-ai-rag-engine) into an `EvalTarget`. It is not part of the starter, add it yourself:
+
+```java
+RagEngineTarget target = RagEngineTarget.of(ragService, RagTargetOptions.defaults().withTopK(3));
+```
+
+The tenant, the source filter and `topK` come from `RagTargetOptions`, never from a dataset case. Source filter entries are rag-engine source names, not file names.
+
+`eval-framework-sample` is a complete offline example with fake embedding and chat models, so it needs no model server, API key or Docker. The rag-engine artifacts are not on Maven Central yet, so install them into your local Maven repository first. This is needed for any build from the root of this repository:
+
+```bash
+git clone https://github.com/agentworkshq/spring-ai-rag-engine.git
+cd spring-ai-rag-engine
+./mvnw install -DskipTests
+```
+
+Then, in this repository:
+
+```bash
+./mvnw -pl eval-framework-sample -am verify
+```
+
+`GoldenRagEvalTest` runs 15 golden cases against the real ingestion and retrieval code and compares each run with a committed baseline. It shows that:
+
+- the healthy target passes the gate and reproduces the baseline scores
+- a target limited to the troubleshooting document fails the gate, and the report names the metrics and cases that got worse
+- the run file and the reports contain no question, answer or document text
+- two runs of the same target give the same results
+
+The scores say nothing about the quality of a real system: the fake embedding model only matches shared words, and the fake chat model repeats the first sentence of the best chunk.
+
+To run the same dataset against real models, outside the offline test configuration:
+
+- add a Spring AI model starter and a vector store, and leave out the fake `EmbeddingModel`, `VectorStore` and `ChatClient.Builder` beans
+- set the provider properties, for Ollama `spring.ai.ollama.base-url`, `spring.ai.ollama.chat.model` and `spring.ai.ollama.embedding.model`
+- retune `rag-engine.chunking.chunk-size`, `rag-engine.chunking.overlap`, `rag-engine.retrieval.top-k` and `rag-engine.retrieval.similarity-threshold`, the sample values fit only the fake embedding model
+- record the model names with `RagTargetOptions.withDescription` so that they show up in run files
+- replace the `mustContain` expectations if your model paraphrases, record a new baseline and loosen the thresholds to what your models reliably reach
+- to add judge metrics, set `eval-framework.judge.identifier` to a model other than the one under test
+
+Limitation: a rag-engine citation carries a snippet of at most 200 characters, not the whole chunk, and the adapter only sees citations. Judge metrics such as faithfulness would therefore judge against truncated context and can report supported claims as unsupported. With `rag-engine.answer.cite-sources=false` the adapter sees no retrieved chunks at all.
+
 ## Datasets
 
 A dataset is a file inside a configured dataset directory. Three formats are supported.

@@ -1,0 +1,930 @@
+{
+  "formatVersion": 1,
+  "runId": "aurora-baseline-v1",
+  "datasetName": "aurora-golden",
+  "datasetFingerprint": "fa4a6aced1962e0ce2d66bc9c66c0374af243014886d09502dcf4baf02be5bb2",
+  "targetName": "rag-engine",
+  "startedAt": "2026-11-26T09:52:08.508410100Z",
+  "finishedAt": "2026-11-26T09:52:08.629838400Z",
+  "config": {
+    "dataset.caseCount": "15",
+    "library.version": "unknown",
+    "metrics": "answer_contains,citation,citation_grounded,hit_at_3,latency,mrr_at_3,no_answer,recall_at_3",
+    "runner.abandonedCalls": "0",
+    "runner.concurrency": "1",
+    "runner.includeTags": "",
+    "runner.judgeCallsUsed": "0",
+    "runner.maxAttempts": "1",
+    "runner.maxCases": "1000",
+    "runner.maxJudgeCalls": "500",
+    "runner.perCaseTimeoutMs": "60000",
+    "runner.perMetricTimeoutMs": "60000",
+    "runner.selectedCases": "15",
+    "runner.totalTimeoutMs": "1800000",
+    "target.engine": "rag-engine",
+    "target.sourceFilter": "1",
+    "target.topK": "default"
+  },
+  "cases": [
+    {
+      "caseId": "firmware-01",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 71,
+      "answered": true,
+      "answerChars": 86,
+      "latencyMs": 39,
+      "retrievedCount": 1,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 1 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "out-of-scope-01",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 0,
+      "answered": false,
+      "answerChars": 54,
+      "latencyMs": 2,
+      "retrievedCount": 0,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no required phrases"
+        },
+        {
+          "metricName": "citation",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "nothing was cited"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "abstained as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        }
+      ]
+    },
+    {
+      "caseId": "out-of-scope-02",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 9,
+      "answered": false,
+      "answerChars": 54,
+      "latencyMs": 1,
+      "retrievedCount": 0,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no required phrases"
+        },
+        {
+          "metricName": "citation",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "nothing was cited"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "abstained as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        }
+      ]
+    },
+    {
+      "caseId": "out-of-scope-03",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 2,
+      "answered": false,
+      "answerChars": 54,
+      "latencyMs": 1,
+      "retrievedCount": 0,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no required phrases"
+        },
+        {
+          "metricName": "citation",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "nothing was cited"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "abstained as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        }
+      ]
+    },
+    {
+      "caseId": "out-of-scope-04",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 2,
+      "answered": false,
+      "answerChars": 54,
+      "latencyMs": 1,
+      "retrievedCount": 0,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no required phrases"
+        },
+        {
+          "metricName": "citation",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "nothing was cited"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "abstained as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "SKIPPED",
+          "score": null,
+          "reason": "case has no expected sources"
+        }
+      ]
+    },
+    {
+      "caseId": "setup-01",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 3,
+      "answered": true,
+      "answerChars": 116,
+      "latencyMs": 2,
+      "retrievedCount": 3,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 3"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 3"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 3 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "setup-02",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 3,
+      "answered": true,
+      "answerChars": 49,
+      "latencyMs": 2,
+      "retrievedCount": 1,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 1 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "setup-03",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 5,
+      "answered": true,
+      "answerChars": 81,
+      "latencyMs": 4,
+      "retrievedCount": 3,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 3"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 3"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 3 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "setup-04",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 3,
+      "answered": true,
+      "answerChars": 126,
+      "latencyMs": 1,
+      "retrievedCount": 2,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 2 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "troubleshooting-01",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 2,
+      "answered": true,
+      "answerChars": 160,
+      "latencyMs": 2,
+      "retrievedCount": 2,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 2 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "troubleshooting-02",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 2,
+      "answered": true,
+      "answerChars": 84,
+      "latencyMs": 1,
+      "retrievedCount": 3,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 3"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 3"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 3 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "troubleshooting-03",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 4,
+      "answered": true,
+      "answerChars": 78,
+      "latencyMs": 2,
+      "retrievedCount": 2,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 2 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "warranty-01",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 1,
+      "answered": true,
+      "answerChars": 94,
+      "latencyMs": 2,
+      "retrievedCount": 1,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 1 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "warranty-02",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 5,
+      "answered": true,
+      "answerChars": 118,
+      "latencyMs": 2,
+      "retrievedCount": 2,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 2"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 2 chunks"
+        }
+      ]
+    },
+    {
+      "caseId": "warranty-03",
+      "status": "COMPLETED",
+      "errorMessage": null,
+      "durationMs": 0,
+      "answered": true,
+      "answerChars": 98,
+      "latencyMs": 1,
+      "retrievedCount": 1,
+      "metricResults": [
+        {
+          "metricName": "answer_contains",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 required phrases present"
+        },
+        {
+          "metricName": "citation",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources cited"
+        },
+        {
+          "metricName": "citation_grounded",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 citations grounded in retrieved chunks"
+        },
+        {
+          "metricName": "hit_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "latency",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "latency within 30000 ms"
+        },
+        {
+          "metricName": "mrr_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "first relevant chunk at rank 1 of 1"
+        },
+        {
+          "metricName": "no_answer",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "answered as expected"
+        },
+        {
+          "metricName": "recall_at_3",
+          "status": "PASSED",
+          "score": 1.0,
+          "reason": "1 of 1 expected sources covered in the first 1 chunks"
+        }
+      ]
+    }
+  ]
+}

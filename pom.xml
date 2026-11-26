@@ -39,6 +39,8 @@
         <module>eval-framework-autoconfigure</module>
         <module>eval-framework-spring-boot-starter</module>
         <module>eval-framework-junit</module>
+        <module>eval-framework-rag-adapter</module>
+        <module>eval-framework-sample</module>
     </modules>
 
     <properties>
@@ -49,6 +51,7 @@
         <spring-ai.version>2.0.3</spring-ai.version>
         <snakeyaml-engine.version>3.0.1</snakeyaml-engine.version>
         <opentest4j.version>1.3.0</opentest4j.version>
+        <rag-engine.version>0.1.0-SNAPSHOT</rag-engine.version>
     </properties>
 
     <dependencyManagement>
@@ -96,6 +99,21 @@
                 <groupId>dev.agentworkshq</groupId>
                 <artifactId>eval-framework-junit</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.agentworkshq</groupId>
+                <artifactId>eval-framework-rag-adapter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.agentworkshq</groupId>
+                <artifactId>rag-engine-core</artifactId>
+                <version>${rag-engine.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.agentworkshq</groupId>
+                <artifactId>rag-engine-spring-boot-starter</artifactId>
+                <version>${rag-engine.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
